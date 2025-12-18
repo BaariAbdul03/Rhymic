@@ -1,7 +1,11 @@
 Flask
-Flask-Cors
-gunicorn
 Flask-SQLAlchemy
-Flask-Bcrypt
+Flask-Cors
 Flask-JWT-Extended
+Flask-Limiter
+Flask-Bcrypt
+google-generativeai
+requests
+gunicorn
 python-dotenv
+email_validator

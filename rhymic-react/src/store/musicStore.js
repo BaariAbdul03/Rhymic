@@ -2,6 +2,8 @@
 import { create } from 'zustand';
 import { useAuthStore } from './authStore'; // Import auth store
 
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 // Helper function to handle API responses
 const handleResponse = async (response) => {
   if (response.status === 401) {
@@ -39,7 +41,7 @@ export const useMusicStore = create((set, get) => ({
   fetchSongs: async () => {
     set({ error: null });
     try {
-      const response = await fetch('/api/songs'); // Use relative path
+      const response = await fetch(`${BASE_URL}/api/songs`); // Use relative path
       if (!response.ok) throw new Error('Failed to fetch songs.');
       const data = await response.json();
       set({ songs: data });
@@ -53,8 +55,7 @@ export const useMusicStore = create((set, get) => ({
     if (!token) return;
     set({ error: null });
     try {
-      const response = await fetch('/api/likes', { // Use relative path
-        headers: { 'Authorization': `Bearer ${token}` }
+      const response = await fetch(`${BASE_URL}/api/likes`, { // Use relative path
       });
       await handleResponse(response);
       const likedIds = await response.json();
@@ -77,7 +78,7 @@ export const useMusicStore = create((set, get) => ({
     set({ likedSongs: newLikes, error: null });
 
     try {
-      const response = await fetch('/api/likes', { // Use relative path
+      const response = await fetch(`${BASE_URL}/api/likes`, { // Use relative path
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -96,7 +97,7 @@ export const useMusicStore = create((set, get) => ({
     if (!token) return;
     set({ error: null });
     try {
-      const response = await fetch('/api/playlists', { // Use relative path
+      const response = await fetch(`${BASE_URL}/api/playlists`, { // Use relative path
         headers: { 'Authorization': `Bearer ${token}` }
       });
       await handleResponse(response);
@@ -112,7 +113,7 @@ export const useMusicStore = create((set, get) => ({
     if (!token) return;
     set({ error: null });
     try {
-      const response = await fetch('/api/playlists', { // Use relative path
+      const response = await fetch(`${BASE_URL}/api/playlists`, { // Use relative path
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -135,7 +136,7 @@ export const useMusicStore = create((set, get) => ({
     if (!token) return;
     set({ error: null });
     try {
-      const response = await fetch('/api/playlists/add_song', { // Use relative path
+      const response = await fetch(`${BASE_URL}/api/playlists/add_song`, { // Use relative path
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -158,7 +159,7 @@ export const useMusicStore = create((set, get) => ({
     set({ currentPlaylist: null, error: null });
 
     try {
-      const response = await fetch(`/api/playlists/${playlistId}`, { // Use relative path
+      const response = await fetch(`${BASE_URL}/api/playlists/${playlistId}`, { // Use relative path
         headers: { 'Authorization': `Bearer ${token}` }
       });
       await handleResponse(response);

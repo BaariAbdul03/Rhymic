@@ -18,7 +18,7 @@ const Topbar = () => {
   const allSongs = useMusicStore((state) => state.songs);
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
 
-  const BASE_URL = 'http://127.0.0.1:5000';
+  const BASE_URL = 'https://rhymic-backend.onrender.com';
   const avatarUrl = user?.profile_pic ? `${BASE_URL}${user.profile_pic}` : null;
 
   // --- SEARCH LOGIC ---

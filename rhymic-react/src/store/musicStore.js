@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { useAuthStore } from './authStore'; // Import auth store
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const BASE_URL = 'https://rhymic-backend.onrender.com';
 
 // Helper function to handle API responses
 const handleResponse = async (response) => {
@@ -71,7 +71,7 @@ export const useMusicStore = create((set, get) => ({
       set({ error: "Please log in to like songs." });
       return;
     }
-    
+
     const { likedSongs } = get();
     const isLiked = likedSongs.includes(songId);
     const newLikes = isLiked ? likedSongs.filter(id => id !== songId) : [...likedSongs, songId];
@@ -80,7 +80,7 @@ export const useMusicStore = create((set, get) => ({
     try {
       const response = await fetch(`${BASE_URL}/api/likes`, { // Use relative path
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
@@ -115,7 +115,7 @@ export const useMusicStore = create((set, get) => ({
     try {
       const response = await fetch(`${BASE_URL}/api/playlists`, { // Use relative path
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
@@ -138,7 +138,7 @@ export const useMusicStore = create((set, get) => ({
     try {
       const response = await fetch(`${BASE_URL}/api/playlists/add_song`, { // Use relative path
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
@@ -155,7 +155,7 @@ export const useMusicStore = create((set, get) => ({
   fetchPlaylistDetails: async (playlistId) => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    
+
     set({ currentPlaylist: null, error: null });
 
     try {
@@ -181,7 +181,8 @@ export const useMusicStore = create((set, get) => ({
   seek: (time) => { const { audioElement } = get(); if (audioElement) audioElement.currentTime = time; set({ currentTime: time }); },
   toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
   toggleRepeat: () => set((state) => { const newRepeat = !state.repeat; if (get().audioElement) get().audioElement.loop = newRepeat; return { repeat: newRepeat }; }),
-  nextSong: () => { const { songs, currentSong, shuffle } = get();
+  nextSong: () => {
+    const { songs, currentSong, shuffle } = get();
     if (!currentSong || songs.length === 0) return;
     let nextIndex;
     if (shuffle) {
@@ -192,7 +193,8 @@ export const useMusicStore = create((set, get) => ({
     }
     set({ currentSong: songs[nextIndex], isPlaying: true, currentTime: 0 });
   },
-  prevSong: () => { const { songs, currentSong, shuffle } = get();
+  prevSong: () => {
+    const { songs, currentSong, shuffle } = get();
     if (!currentSong || songs.length === 0) return;
     let prevIndex;
     if (shuffle) {

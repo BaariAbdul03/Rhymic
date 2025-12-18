@@ -4,6 +4,8 @@ import { useMusicStore } from '../store/musicStore';
 import { useAuthStore } from '../store/authStore';
 import { Sparkles, Play } from 'lucide-react';
 
+const BASE_URL = 'https://rhymic-backend.onrender.com';
+
 const SmartDJ = () => {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -30,7 +32,7 @@ const SmartDJ = () => {
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/ai/recommend', {
+      const response = await fetch(`${BASE_URL}/api/ai/recommend`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -44,7 +46,7 @@ const SmartDJ = () => {
 
       if (response.ok) {
         const data = await response.json();
-        const BASE_URL = 'http://127.0.0.1:5000';
+
         const processed = data.map(s => ({
            ...s,
            cover: s.cover.startsWith('http') ? s.cover : `${BASE_URL}${s.cover}`,

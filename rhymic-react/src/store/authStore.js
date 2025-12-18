@@ -1,6 +1,8 @@
 // src/store/authStore.js
 import { create } from 'zustand';
 
+const BASE_URL = 'https://rhymic-backend.onrender.com';
+
 export const useAuthStore = create((set, get) => ({
   user: JSON.parse(localStorage.getItem('user')) || null,
   token: localStorage.getItem('token') || null,
@@ -9,7 +11,7 @@ export const useAuthStore = create((set, get) => ({
   login: async (email, password) => {
     set({ error: null });
     try {
-      const response = await fetch('/api/login', { // Use relative path
+      const response = await fetch(`${BASE_URL}/api/login`, { // Use relative path
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -35,7 +37,7 @@ export const useAuthStore = create((set, get) => ({
   signup: async (name, email, password) => {
     set({ error: null });
     try {
-      const response = await fetch('/api/signup', { // Use relative path
+      const response = await fetch(`${BASE_URL}/api/signup`, { // Use relative path
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
@@ -64,7 +66,7 @@ export const useAuthStore = create((set, get) => ({
     formData.append('image', file);
 
     try {
-      const response = await fetch('http://127.0.0.1:5000/api/upload_avatar', {
+      const response = await fetch(`${BASE_URL}/api/upload_avatar`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData

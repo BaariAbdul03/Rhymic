@@ -460,6 +460,18 @@ def login():
         }), 200
     return jsonify({"message": "Invalid"}), 401
 
+# --- DEBUG ROUTE (Remove after presentation) ---
+@app.route('/api/debug/users', methods=['GET'])
+def debug_users():
+    try:
+        users = User.query.all()
+        return jsonify([
+            {"id": u.id, "name": u.name, "email": u.email}
+            for u in users
+        ]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # --- MOVE DATABASE INITIALIZATION HERE (AT THE BOTTOM) ---
 with app.app_context():
     # 1. Create Tables

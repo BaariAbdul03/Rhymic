@@ -59,22 +59,6 @@ db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
-# FORCE DATABASE & FOLDER CREATION ON STARTUP
-with app.app_context():
-    # 1. Create Tables
-    db.create_all()
-    print(">>> Database initialized successfully!")
-
-    # 2. Create Folders (Safety Check)
-    folders = [
-        os.path.join(app.root_path, 'rhymic-react', 'public', 'assets', 'music'),
-        os.path.join(app.root_path, 'rhymic-react', 'public', 'assets', 'covers'),
-        os.path.join(app.root_path, 'rhymic-react', 'public', 'assets', 'profiles'),
-        os.path.join(app.root_path, 'rhymic-react', 'public', 'assets', 'music', 'Uploads')
-    ]
-    for folder in folders:
-        os.makedirs(folder, exist_ok=True)
-
 # --- DATABASE MODELS ---
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -475,6 +459,23 @@ def login():
             }
         }), 200
     return jsonify({"message": "Invalid"}), 401
+
+# --- MOVE DATABASE INITIALIZATION HERE (AT THE BOTTOM) ---
+with app.app_context():
+    # 1. Create Tables
+    db.create_all()
+    print(">>> Database initialized successfully!")
+
+    # 2. Create Folders (Safety Check)
+    folders = [
+        os.path.join(app.root_path, 'rhymic-react', 'public', 'assets', 'music'),
+        os.path.join(app.root_path, 'rhymic-react', 'public', 'assets', 'covers'),
+        os.path.join(app.root_path, 'rhymic-react', 'public', 'assets', 'profiles'),
+        os.path.join(app.root_path, 'rhymic-react', 'public', 'assets', 'music', 'Uploads')
+    ]
+    for folder in folders:
+        os.makedirs(folder, exist_ok=True)
+
 
 # --- RUNNER ---
 if __name__ == '__main__':

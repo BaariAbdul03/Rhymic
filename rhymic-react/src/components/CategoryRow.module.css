@@ -1,0 +1,132 @@
+/* src/components/CategoryRow.module.css */
+.rowContainer {
+  padding: 20px 32px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary); /* Theme variable */
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+}
+
+.scrollBtn {
+  background: var(--bg-secondary); /* Theme variable */
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+.scrollBtn:hover {
+  background: var(--accent-color);
+  color: var(--accent-text);
+  border-color: var(--accent-color);
+}
+
+.scrollArea {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scroll-behavior: smooth; /* Smooth scrolling */
+  scrollbar-width: none;
+}
+.scrollArea::-webkit-scrollbar {
+  display: none;
+}
+
+.songCard {
+  flex: 0 0 auto;
+  width: 160px;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  
+  /* USE VARIABLES HERE */
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  padding: 10px;
+  border-radius: 16px;
+  position: relative;
+}
+
+.songCard:hover {
+  transform: translateY(-5px);
+  background: var(--glass-hover);
+  border-color: var(--accent-color);
+}
+
+.songCover {
+  width: 100%;
+  height: 160px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 4px 10px var(--shadow-color);
+  margin-bottom: 8px;
+}
+
+.songTitle {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.songArtist {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.overlayBtn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.songCard:hover .overlayBtn {
+  opacity: 1;
+}
+
+.overlayBtn button {
+  background: var(--overlay-bg);
+  border: none;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.overlayBtn button:hover {
+  background: var(--accent-color);
+}

@@ -1,0 +1,215 @@
+.topbar {
+  display: flex;
+  justify-content: space-between; /* Push Search left, User right */
+  align-items: center;
+  padding: 16px 32px;
+  width: 100%;
+  background-color: transparent;
+  box-sizing: border-box;
+  position: relative;
+  z-index: 50;
+}
+
+.searchWrapper {
+  position: relative;
+  flex: 1; /* Allow search to grow */
+  max-width: 480px; /* But cap its width */
+  margin-right: 24px; /* Space between search and user icons */
+}
+
+.searchContainer {
+  display: flex;
+  align-items: center;
+  /* Light Mode Default: White background with a visible border */
+  background-color: #ffffff; 
+  border: 1px solid #cbd5e0; /* Darker border for visibility */
+  border-radius: 12px;
+  padding: 10px 16px;
+  width: 100%;
+  transition: all 0.2s ease;
+  /* Subtle shadow to lift it off the header */
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* Dark Mode Override */
+:global([data-theme="dark"]) .searchContainer {
+  background-color: #1e293b;
+  border-color: #334155;
+  box-shadow: none;
+}
+
+.searchContainer:focus-within {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.2);
+}
+
+.searchIcon {
+  color: var(--text-secondary);
+  min-width: 20px;
+}
+
+.searchInput {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  margin-left: 12px;
+  width: 100%;
+  font-weight: 500;
+}
+
+.searchInput::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+/* Results Dropdown */
+.resultsDropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  width: 100%;
+  
+  /* Light Mode Default: Solid White */
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  
+  /* FIX: Stronger shadow so it doesn't blend into the page */
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+  
+  max-height: 450px;
+  overflow-y: auto;
+  padding: 8px;
+  box-sizing: border-box;
+  z-index: 9999;
+  
+  /* Ensure no transparency */
+  backdrop-filter: none;
+  
+  /* HIDE SCROLLBAR */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+/* Dark mode override for Dropdown */
+:global([data-theme="dark"]) .resultsDropdown {
+  background-color: #121212 !important;
+  border-color: #333333;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.resultsDropdown::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+/* Dark mode override for Dropdown */
+:global([data-theme="dark"]) .resultsDropdown {
+  background-color: #1e293b !important;
+  border-color: #334155;
+}
+
+.resultItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+.resultItem:hover {
+  background-color: var(--bg-primary);
+}
+
+.resultCover { width: 40px; height: 40px; border-radius: 6px; object-fit: cover; }
+.resultInfo h4 { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); margin: 0; }
+.resultInfo p { font-size: 0.85rem; color: var(--text-secondary); margin: 4px 0 0 0; }
+.message { padding: 24px; text-align: center; color: var(--text-secondary); font-style: italic; }
+
+/* User Controls */
+.userControls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.userIcon {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  color: var(--accent-color);
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden; /* For image */
+}
+.userIcon:hover { transform: scale(1.05); color: var(--text-primary); }
+
+.subscribeButton {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 24px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Profile Popup */
+.profilePopup {
+  position: absolute;
+  top: calc(100% + 14px);
+  right: 0;
+  width: 260px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  z-index: 2000;
+  padding: 24px;
+  text-align: center;
+}
+/* Dark mode override for Popup */
+:global([data-theme="dark"]) .profilePopup {
+  background-color: #1e293b;
+  border-color: #334155;
+}
+
+.bigAvatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  margin: 0 auto 16px auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border: 2px solid var(--accent-color);
+}
+.bigAvatar img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+.uploadBtn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: var(--accent-color);
+  color: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 3px solid var(--bg-secondary);
+}
+
+.profilePopup h3 { margin: 0; color: var(--text-primary); font-size: 1.2rem; }
+.profilePopup p { margin: 4px 0 0 0; color: var(--text-secondary); font-size: 0.9rem; }

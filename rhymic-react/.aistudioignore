@@ -1,0 +1,19 @@
+# Ignore all node modules
+node_modules/
+
+# Ignore build/dist folders
+dist/
+build/
+
+# Ignore all assets (we will provide code directly)
+src/assets/
+
+# Ignore media files
+*.mp3
+*.mp4
+*.jpg
+*.png
+
+# Ignore package lock files
+package-lock.json
+yarn.lock

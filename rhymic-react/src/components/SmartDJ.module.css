@@ -1,0 +1,149 @@
+/* src/components/SmartDJ.module.css */
+.container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  padding-top: 60px; /* Start from top but pushed down */
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.content {
+  width: 100%;
+  max-width: 600px;
+  text-align: center;
+  padding: 0 20px 40px 20px;
+}
+
+.iconWrapper {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px auto;
+  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
+}
+
+.title {
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 0 0 40px 0;
+}
+
+.form {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 40px;
+}
+
+.input {
+  flex-grow: 1;
+  padding: 16px 24px;
+  border-radius: 12px;
+  border: 2px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  outline: none;
+  transition: all 0.2s;
+}
+.input:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1);
+}
+
+.button {
+  padding: 0 32px;
+  border-radius: 12px;
+  border: none;
+  background: #8b5cf6;
+  color: white;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.button:hover {
+  background: #7c3aed;
+  transform: translateY(-2px);
+}
+.button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.resultsTitle {
+  text-align: left;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.songGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.miniCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+}
+.miniCard:hover {
+  background: var(--glass-hover);
+}
+
+.miniCard img {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.miniInfo h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+.miniInfo p {
+  margin: 4px 0 0 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.playingIcon {
+  margin-left: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.miniCard:hover .playingIcon {
+  opacity: 1;
+}

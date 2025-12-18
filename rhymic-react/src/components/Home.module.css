@@ -1,0 +1,24 @@
+.homeContainer {
+  width: 100%;
+  padding: 32px;
+  box-sizing: border-box;
+}
+
+.homeContainer > :nth-child(2) { /* ForYou Section */
+  animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s backwards;
+}
+
+.categoryStack {
+  animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.2s backwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

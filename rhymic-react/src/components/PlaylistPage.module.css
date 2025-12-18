@@ -1,0 +1,204 @@
+.pageContainer {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  animation: fadeIn 0.8s ease-out;
+  /* Custom scrollbar */
+  scrollbar-width: none;
+}
+.pageContainer::-webkit-scrollbar {
+  width: 6px;
+}
+.pageContainer::-webkit-scrollbar-thumb {
+  background-color: rgba(255,255,255,0.2);
+  border-radius: 10px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- HEADER STYLES --- */
+.header {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 32px;
+  padding: 40px 32px;
+  background: var(--bg-primary); /* Fallback */
+  overflow: hidden; /* Clip the blurred background */
+}
+
+/* NEW: Rich Background Style */
+.headerGradient {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(60px) brightness(0.4); /* Darken it for text readability */
+  transform: scale(1.1); /* Remove blur edges */
+  z-index: 0;
+}
+
+.headerImage {
+  width: 230px;
+  height: 230px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 4px 60px rgba(0,0,0,0.5);
+  z-index: 1;
+}
+
+.headerContent {
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.5); /* Improve text contrast */
+}
+
+.type {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 8px;
+}
+
+.title {
+  font-size: 4.5rem; /* Massive Title */
+  font-weight: 900;
+  color: white;
+  margin: 0 0 24px 0;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: rgba(255,255,255,0.8);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.metaItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* --- LIST STYLES --- */
+.listContainer {
+  padding: 24px 32px;
+  background: var(--bg-primary); /* Use theme bg */
+  position: relative;
+  z-index: 1;
+}
+
+.actionBar {
+  margin-bottom: 32px;
+}
+
+.bigPlayBtn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--accent-color);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+  transition: transform 0.2s, background-color 0.2s;
+}
+.bigPlayBtn:hover {
+  transform: scale(1.05);
+  background-color: #3b82f6; /* Slightly lighter blue */
+}
+
+.songItem {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px; /* Taller rows */
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+}
+
+.songItem:hover {
+  background-color: var(--glass-hover); /* This uses our brighter theme variable */
+  border-color: var(--border-color);
+}
+
+.songItem.active {
+  background-color: rgba(74, 144, 226, 0.15);
+  border-color: var(--accent-color);
+}
+
+.index {
+  color: var(--text-secondary);
+  width: 32px;
+  font-size: 1rem;
+}
+
+.songLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.songCover {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+}
+
+.songInfo h4 {
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.songInfo p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.songRight {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.likeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  opacity: 0; /* Hide by default */
+  transition: opacity 0.2s;
+}
+
+.songItem:hover .likeButton {
+  opacity: 1; /* Show on hover */
+}
+
+.likeButton.likeActive {
+  color: #e53e3e;
+  opacity: 1;
+}
+
+.playingIndicator {
+  color: var(--accent-color);
+  font-size: 0.8rem;
+  font-weight: 600;
+}

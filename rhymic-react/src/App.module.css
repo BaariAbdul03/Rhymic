@@ -1,0 +1,34 @@
+.appContainer {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  grid-template-rows: 1fr auto;
+  grid-template-areas: "sidebar main" "sidebar progress-bar";
+  height: 100vh;
+  overflow: hidden;
+  background: transparent; /* Let body background show */
+}
+
+.contentArea {
+  grid-area: main;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: transparent; /* Make transparent */
+  /* Custom scrollbar styles remain the same */
+  scrollbar-width: none;
+}
+.contentArea::-webkit-scrollbar {
+  width: 6px;
+}
+.contentArea::-webkit-scrollbar-thumb {
+  background-color: var(--text-secondary); /* Adapts to theme */
+  border-radius: 10px;
+  opacity: 0.5;
+}
+.contentArea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.progressBarArea {
+  grid-area: progress-bar;
+  z-index: 100;
+}

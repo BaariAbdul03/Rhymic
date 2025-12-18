@@ -1,0 +1,121 @@
+/* In src/components/TopSongs.module.css */
+
+/* ... (topSongs, title, loading are fine) ... */
+.topSongs {
+  padding: 16px;
+  width: 100%; /* Make it fill its container */
+}
+
+.title {
+  font-size: 1.5rem; /* Make title a bit bigger */
+  font-weight: 700;
+  color: #1a202c;
+  padding: 0 8px 12px 8px;
+}
+
+
+.songList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.songItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px; /* More padding */
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  /* ADD THESE: */
+  background-color: white;
+  border: 1px solid transparent;
+  margin-bottom: 8px; /* Spacing between items */
+}
+
+.songItem:hover {
+  background-color: white;
+  border-color: #e2e8f0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transform: scale(1.01);
+}
+
+.songItem.active {
+  background-color: #eef6ff; /* Very light blue */
+  border-color: #4a90e2;
+}
+
+.songItem.active h4 {
+  color: #4a90e2; /* Blue text for active song title */
+}
+
+.songCover {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0; /* Don't shrink cover */
+}
+
+.songInfo {
+  /* Allow info to truncate */
+  overflow: hidden;
+  min-width: 0;
+}
+.songInfo h4, .songInfo p {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.songInfo h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333333;
+  margin: 0;
+}
+.songInfo p {
+  font-size: 0.8rem;
+  color: #718096;
+  margin: 0;
+}
+
+/* --- ADD THIS NEW RULE --- */
+.songRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0; /* Don't shrink this side */
+}
+
+.playIcon {
+  color: #4a90e2;
+  flex-shrink: 0;
+}
+
+/* --- ADD THESE NEW RULES --- */
+.likeButton {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: #a0aec0; /* Muted color */
+}
+.likeButton:hover {
+  color: #e53e3e; /* Red hover */
+}
+.likeButton.likeActive {
+  color: #e53e3e; /* Solid red when liked */
+}
+
+/* Fix for active state */
+.songItem.active .likeButton {
+  color: #ffffff; /* White heart on blue bg */
+}
+.songItem.active .likeButton.likeActive {
+  color: #ffffff; /* Still white when liked, but filled */
+}

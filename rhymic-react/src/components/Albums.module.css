@@ -1,0 +1,151 @@
+.albumsContainer {
+  padding: 0 40px 40px 40px;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: calc(100vh - 72px - 90px);
+}
+
+.header {
+  margin-bottom: 40px;
+  padding-top: 24px;
+}
+
+.header h1 {
+  display: flex;
+  align-items: center;
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+  letter-spacing: -1px;
+}
+
+.header p {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.albumsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 24px;
+}
+
+.albumCard {
+  background-color: var(--bg-elevated);
+  padding: 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.albumCard:hover {
+  background-color: var(--glass-hover);
+  transform: translateY(-4px);
+}
+
+.coverContainer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+}
+
+.cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.albumCard:hover .cover {
+  transform: scale(1.05);
+}
+
+.playOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.albumCard:hover .playOverlay {
+  opacity: 1;
+}
+
+.playBtn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--accent-primary);
+  color: var(--accent-text);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(200, 164, 78, 0.4);
+  transform: translateY(12px);
+  transition: all 0.2s;
+}
+
+.albumCard:hover .playBtn {
+  transform: translateY(0);
+}
+
+.playBtn:hover {
+  transform: scale(1.05) !important;
+  background-color: var(--accent-secondary);
+}
+
+.albumTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.albumArtist {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.emptyState {
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  padding: 40px;
+  text-align: center;
+  background-color: var(--bg-elevated);
+  border-radius: 12px;
+}
+
+@media (max-width: 768px) {
+  .albumsContainer {
+    padding: 0 24px 24px 24px;
+  }
+  .header h1 {
+    font-size: 2rem;
+  }
+  .albumsGrid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 16px;
+  }
+}

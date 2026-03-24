@@ -27,7 +27,7 @@
   align-items: flex-end;
   gap: 32px;
   padding: 40px 32px;
-  background: var(--bg-primary); /* Fallback */
+  background: transparent; 
   overflow: hidden; /* Clip the blurred background */
 }
 
@@ -37,9 +37,9 @@
   top: 0; left: 0; right: 0; bottom: 0;
   background-size: cover;
   background-position: center;
-  filter: blur(60px) brightness(0.4); /* Darken it for text readability */
+  filter: blur(60px) brightness(0.5); /* Darken it for text readability */
   transform: scale(1.1); /* Remove blur edges */
-  z-index: 0;
+  z-index: 1;
 }
 
 .headerImage {
@@ -48,13 +48,15 @@
   object-fit: cover;
   border-radius: 8px;
   box-shadow: 0 4px 60px rgba(0,0,0,0.5);
-  z-index: 1;
+  z-index: 2;
+  position: relative;
 }
 
 .headerContent {
   display: flex;
   flex-direction: column;
-  z-index: 1;
+  z-index: 2;
+  position: relative;
   text-shadow: 0 2px 10px rgba(0,0,0,0.5); /* Improve text contrast */
 }
 
@@ -106,19 +108,19 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background-color: var(--accent-color);
+  background-color: var(--accent-primary);
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: var(--accent-text);
   cursor: pointer;
   box-shadow: 0 8px 16px rgba(0,0,0,0.2);
   transition: transform 0.2s, background-color 0.2s;
 }
 .bigPlayBtn:hover {
   transform: scale(1.05);
-  background-color: #3b82f6; /* Slightly lighter blue */
+  background-color: var(--accent-secondary);
 }
 
 .songItem {
@@ -138,8 +140,8 @@
 }
 
 .songItem.active {
-  background-color: rgba(74, 144, 226, 0.15);
-  border-color: var(--accent-color);
+  background-color: rgba(212, 175, 55, 0.15); /* Golden tint */
+  border-color: var(--accent-primary);
 }
 
 .index {
@@ -193,12 +195,12 @@
 }
 
 .likeButton.likeActive {
-  color: #e53e3e;
+  color: var(--accent-primary);
   opacity: 1;
 }
 
 .playingIndicator {
-  color: var(--accent-color);
+  color: var(--accent-primary);
   font-size: 0.8rem;
   font-weight: 600;
 }

@@ -1,0 +1,37 @@
+services:
+  # ----------------------------------------
+  # Flask Backend Service
+  # ----------------------------------------
+  - type: web
+    name: rhymic-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false # You MUST provide this in the Render dashboard
+      - key: FRONTEND_URL
+        value: https://rhymic.onrender.com # Update this if using custom domain
+        
+  # ----------------------------------------
+  # React Frontend (Static Site)
+  # ----------------------------------------
+  - type: web
+    name: rhymic-frontend
+    env: static
+    rootDir: rhymic-react
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: VITE_API_BASE_URL
+        # Render will automatically link this to your backend service URL if configured via dashboard
+        # For Blueprint auto-deploy, manually substitute this in your Render Dashboard Environment Variables once the backend provisions its URL.
+        value: https://rhymic-backend.onrender.com 

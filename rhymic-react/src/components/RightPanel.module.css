@@ -1,0 +1,193 @@
+.rightPanel {
+  padding: 24px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.desktopOverlay {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 400px;
+  z-index: 15000;
+  background: rgba(18, 18, 18, 0.95);
+  backdrop-filter: blur(50px);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: -20px 0 50px rgba(0,0,0,0.8);
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.headerTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1; /* Eliminates trailing typographic spacing causing vertical mismatches */
+}
+
+.iconBtn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+}
+
+.mobileOnlyBtn {
+  display: none;
+}
+.forceShow {
+  display: flex !important;
+}
+
+.queueContainer {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-right: -16px;
+  padding-right: 16px;
+}
+
+.queueContainer::-webkit-scrollbar {
+  width: 4px;
+}
+.queueContainer::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+.sectionBlock {
+  margin-bottom: 32px;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+  color: var(--text-primary);
+}
+
+.queueList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.queueItem {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.queueItem:hover {
+  opacity: 0.8;
+}
+
+.queueItem.dragging {
+  background: var(--bg-elevated);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+  z-index: 1000;
+  border-radius: 8px;
+  padding: 8px !important;
+}
+
+.circleIcon {
+  display: flex;
+  align-items: center;
+  justify-content: justify-start;
+  margin-right: 16px;
+  width: 24px;
+}
+
+.queueCover {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: cover;
+  margin-right: 16px;
+}
+
+.queueCoverSmall {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
+  margin-right: 16px;
+}
+
+.queueInfo {
+  flex: 1;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.queueTitle {
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activeText {
+  color: var(--accent-primary);
+}
+
+.queueArtist {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queueAction {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: grab;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.queueAction:active {
+  cursor: grabbing;
+}
+
+@media (max-width: 1200px) {
+  .rightPanel {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 15000;
+    background: rgba(18, 18, 18, 0.98);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border-left: none;
+    padding: 24px 24px 80px 24px;
+  }
+
+  .mobileOnlyBtn {
+    display: flex;
+  }
+}

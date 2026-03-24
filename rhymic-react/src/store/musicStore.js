@@ -1,28 +1,14 @@
-// src/store/musicStore.js
 import { create } from 'zustand';
-import { useAuthStore } from './authStore'; // Import auth store
-
-// Helper function to handle API responses
-const handleResponse = async (response) => {
-  if (response.status === 401) {
-    // Token is invalid or expired
-    useAuthStore.getState().logout(); // Use logout action
-    throw new Error('Unauthorized: Please log in again.');
-  }
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred.' }));
-    throw new Error(errorData.message || `Request failed: ${response.status}`);
-  }
-  return response;
-};
+import { useAuthStore } from './authStore';
+import { songsApi, playlistsApi, likesApi } from '../services/api';
 
 export const useMusicStore = create((set, get) => ({
-  // ... (State) ...
   songs: [],
   currentSong: null,
   likedSongs: [],
   playlists: [],
   currentPlaylist: null,
+  queue: [], // Explicit queue array
   volume: 1,
   isPlaying: false,
   currentTime: 0,
@@ -32,40 +18,33 @@ export const useMusicStore = create((set, get) => ({
   repeat: false,
   error: null,
 
-  // --- ACTIONS ---
-
   clearError: () => set({ error: null }),
 
   fetchSongs: async () => {
     set({ error: null });
     try {
-      const response = await fetch('/api/songs'); // Use relative path
-      if (!response.ok) throw new Error('Failed to fetch songs.');
-      const data = await response.json();
-      set({ songs: data });
+      const response = await songsApi.getAll();
+      set({ songs: response.data });
     } catch (error) {
       set({ error: error.message });
     }
   },
 
   fetchLikedSongs: async () => {
-    const token = localStorage.getItem('token');
+    const { token } = useAuthStore.getState();
     if (!token) return;
     set({ error: null });
     try {
-      const response = await fetch('/api/likes', { // Use relative path
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      await handleResponse(response);
-      const likedIds = await response.json();
-      set({ likedSongs: likedIds });
+      const response = await likesApi.getAll();
+      set({ likedSongs: response.data });
     } catch (error) {
+       if (error.response?.status === 401) useAuthStore.getState().logout();
       set({ error: error.message });
     }
   },
 
   toggleLike: async (songId) => {
-    const token = localStorage.getItem('token');
+    const { token } = useAuthStore.getState();
     if (!token) {
       set({ error: "Please log in to like songs." });
       return;
@@ -73,104 +52,93 @@ export const useMusicStore = create((set, get) => ({
     
     const { likedSongs } = get();
     const isLiked = likedSongs.includes(songId);
-    const newLikes = isLiked ? likedSongs.filter(id => id !== songId) : [...likedSongs, songId];
+    let newLikes;
+    if (isLiked) {
+       newLikes = likedSongs.filter(id => id !== songId);
+    } else {
+       newLikes = Array.from(new Set([...likedSongs, songId]));
+    }
     set({ likedSongs: newLikes, error: null });
 
     try {
-      const response = await fetch('/api/likes', { // Use relative path
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ song_id: songId })
-      });
-      await handleResponse(response);
+      await likesApi.toggleLike(songId);
     } catch (error) {
+      if (error.response?.status === 401) useAuthStore.getState().logout();
       set({ error: `Like sync error: ${error.message}`, likedSongs }); // Revert on error
     }
   },
 
   fetchPlaylists: async () => {
-    const token = localStorage.getItem('token');
+    const { token } = useAuthStore.getState();
     if (!token) return;
     set({ error: null });
     try {
-      const response = await fetch('/api/playlists', { // Use relative path
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      await handleResponse(response);
-      const data = await response.json();
-      set({ playlists: data });
+      const response = await playlistsApi.getAll();
+      set({ playlists: response.data });
     } catch (error) {
       set({ error: error.message });
     }
   },
 
   createPlaylist: async (name) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
     set({ error: null });
     try {
-      const response = await fetch('/api/playlists', { // Use relative path
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ name })
-      });
-      await handleResponse(response);
-      const newPlaylist = await response.json();
-      set((state) => ({ playlists: [...state.playlists, newPlaylist] }));
-      return true; // Success
+      const response = await playlistsApi.create(name);
+      set((state) => ({ playlists: [...state.playlists, response.data] }));
+      return true;
     } catch (error) {
-      set({ error: `Create playlist error: ${error.message}` });
-      return false; // Fail
+      set({ error: error.response?.data?.message || "Failed to create playlist" });
+      return false;
     }
   },
 
   addSongToPlaylist: async (playlistId, songId) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
     set({ error: null });
     try {
-      const response = await fetch('/api/playlists/add_song', { // Use relative path
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ playlist_id: playlistId, song_id: songId })
-      });
-      await handleResponse(response);
+      await playlistsApi.addSong(playlistId, songId);
       return true;
     } catch (error) {
-      set({ error: `Failed to add song: ${error.message}` });
+      set({ error: "Failed to add song to playlist" });
       return false;
     }
   },
 
   fetchPlaylistDetails: async (playlistId) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    
     set({ currentPlaylist: null, error: null });
-
     try {
-      const response = await fetch(`/api/playlists/${playlistId}`, { // Use relative path
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      await handleResponse(response);
-      const data = await response.json();
-      set({ currentPlaylist: data });
+      const response = await playlistsApi.getOne(playlistId);
+      set({ currentPlaylist: response.data });
     } catch (error) {
-      set({ error: `Failed to fetch playlist details: ${error.message}` });
+      set({ error: "Failed to load playlist" });
     }
   },
 
-  // ... (Player Controls) ...
-  setSongs: (songs) => set({ songs: songs }),
+  // --- AI Categories ---
+  aiCategories: null,
+  fetchAiCategories: async (categoriesList) => {
+    const { token } = useAuthStore.getState();
+    if (!token) return;
+    try {
+      const response = await fetch('/api/ai/categorize-genres', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ categories: categoriesList })
+      });
+      if (!response.ok) throw new Error("Failed to fetch AI categories");
+      const data = await response.json();
+      set({ aiCategories: data });
+    } catch (error) {
+      console.error("AI Fetch Error:", error);
+      set({ aiCategories: {} });
+    }
+  },
+
+  // --- Player Controls ---
+  setSongs: (songs) => set({ songs: songs, queue: songs }),
+  setQueue: (newQueue) => set({ queue: newQueue }),
   setAudioElement: (audio) => set({ audioElement: audio }),
   setCurrentSong: (song) => set({ currentSong: song, isPlaying: true, currentTime: 0 }),
   togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
@@ -180,39 +148,60 @@ export const useMusicStore = create((set, get) => ({
   seek: (time) => { const { audioElement } = get(); if (audioElement) audioElement.currentTime = time; set({ currentTime: time }); },
   toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
   toggleRepeat: () => set((state) => { const newRepeat = !state.repeat; if (get().audioElement) get().audioElement.loop = newRepeat; return { repeat: newRepeat }; }),
-  nextSong: () => { const { songs, currentSong, shuffle } = get();
-    if (!currentSong || songs.length === 0) return;
+  
+  // Decoupled queue operations
+  nextSong: () => { 
+    const { queue, currentSong, shuffle } = get();
+    if (!currentSong || queue.length === 0) return;
     let nextIndex;
     if (shuffle) {
-      do { nextIndex = Math.floor(Math.random() * songs.length); } while (songs.length > 1 && songs[nextIndex].id === currentSong.id);
+      do { nextIndex = Math.floor(Math.random() * queue.length); } while (queue.length > 1 && queue[nextIndex].id === currentSong.id);
     } else {
-      const currentIndex = songs.findIndex(s => s.id === currentSong.id);
-      nextIndex = (currentIndex + 1) % songs.length;
+      const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+      nextIndex = (currentIndex + 1) % queue.length;
     }
-    set({ currentSong: songs[nextIndex], isPlaying: true, currentTime: 0 });
+    set({ currentSong: queue[nextIndex], isPlaying: true, currentTime: 0 });
   },
-  prevSong: () => { const { songs, currentSong, shuffle } = get();
-    if (!currentSong || songs.length === 0) return;
+  
+  prevSong: () => { 
+    const { queue, currentSong, shuffle } = get();
+    if (!currentSong || queue.length === 0) return;
     let prevIndex;
     if (shuffle) {
-      do { prevIndex = Math.floor(Math.random() * songs.length); } while (songs.length > 1 && songs[prevIndex].id === currentSong.id);
+      do { prevIndex = Math.floor(Math.random() * queue.length); } while (queue.length > 1 && queue[prevIndex].id === currentSong.id);
     } else {
-      const currentIndex = songs.findIndex(s => s.id === currentSong.id);
-      prevIndex = (currentIndex - 1 + songs.length) % songs.length;
+      const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+      prevIndex = (currentIndex - 1 + queue.length) % queue.length;
     }
-    set({ currentSong: songs[prevIndex], isPlaying: true, currentTime: 0 });
+    set({ currentSong: queue[prevIndex], isPlaying: true, currentTime: 0 });
   },
+  
   playNext: (song) => set((state) => {
-    const { songs, currentSong } = state;
-    if (!currentSong) return { songs: [...songs, song] };
-    const currentIndex = songs.findIndex(s => s.id === currentSong.id);
-    if (currentIndex === -1) return { songs: [...songs, song] };
-    const newSongs = [...songs];
-    newSongs.splice(currentIndex + 1, 0, song);
-    return { songs: newSongs };
+    if (state.queue.find(s => s.id === song.id)) return state;
+    const { queue, currentSong } = state;
+    if (!currentSong) return { queue: [...queue, song] };
+    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+    if (currentIndex === -1) return { queue: [...queue, song] };
+    const newQueue = [...queue];
+    newQueue.splice(currentIndex + 1, 0, song);
+    return { queue: newQueue };
   }),
 
-  addToQueue: (song) => set((state) => ({ songs: [...state.songs, song] })),
+  addToQueue: (song) => set((state) => {
+    if (state.queue.find(s => s.id === song.id)) return state;
+    return { queue: [...state.queue, song] };
+  }),
+
+  removeFromQueue: (songId) => set((state) => ({
+    queue: state.queue.filter(s => s.id !== songId)
+  })),
+
+  reorderQueue: (startIndex, endIndex) => set((state) => {
+    const newQueue = Array.from(state.queue);
+    const [removed] = newQueue.splice(startIndex, 1);
+    newQueue.splice(endIndex, 0, removed);
+    return { queue: newQueue };
+  }),
 
   setVolume: (volume) => { set({ volume: volume }); const { audioElement } = get(); if (audioElement) audioElement.volume = volume; },
 }));

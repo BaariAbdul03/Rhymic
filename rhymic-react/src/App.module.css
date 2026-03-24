@@ -1,43 +1,89 @@
 .appContainer {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  grid-template-rows: 1fr auto;
-  grid-template-areas: "sidebar main" "sidebar progress-bar";
+  display: flex;
+  flex-direction: row;
   height: 100vh;
+  width: 100vw;
+  background: linear-gradient(135deg, #090909 0%, #161616 50%, #050505 100%);
   overflow: hidden;
-  background: transparent; /* Let body background show */
+  position: relative;
+}
+
+.authContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+
+.mainWrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  height: calc(100vh - 90px); /* Reserve space for bottom player */
+  overflow: hidden;
+}
+
+.scrollableContent {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.contentArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Let inner content scroll */
+  background-color: var(--bg-secondary);
+}
+
+.mainDashboard {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+.rightPanelArea {
+  width: var(--right-panel-width);
+  background-color: transparent;
+  overflow-y: auto;
+  display: none; /* Hidden on mobile by default */
+}
+
+@media (min-width: 1024px) {
+  .rightPanelArea {
+    display: block;
+  }
+}
+
+.bottomPlayer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 90px;
+  background: rgba(18, 18, 18, 0.7);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  z-index: 1000;
+  transform: translateZ(0); /* Force hardware accel for z-index */
 }
 
 @media (max-width: 768px) {
   .appContainer {
-    grid-template-columns: 1fr;
-    grid-template-areas: 
-      "main" 
-      "progress-bar";
+    flex-direction: column;
   }
-}
-
-.contentArea {
-  grid-area: main;
-  overflow-y: auto;
-  overflow-x: hidden;
-  background: transparent; /* Make transparent */
-  /* Custom scrollbar styles remain the same */
-  scrollbar-width: none;
-}
-.contentArea::-webkit-scrollbar {
-  width: 6px;
-}
-.contentArea::-webkit-scrollbar-thumb {
-  background-color: var(--text-secondary); /* Adapts to theme */
-  border-radius: 10px;
-  opacity: 0.5;
-}
-.contentArea::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.progressBarArea {
-  grid-area: progress-bar;
-  z-index: 100;
+  .mainWrapper {
+    height: calc(100vh - 70px);
+  }
+  .bottomPlayer {
+    height: 70px;
+  }
+  .rightPanelArea {
+    display: none;
+  }
 }

@@ -1,182 +1,177 @@
-import React, { useRef, useState } from 'react';
-import {
-  Play, Pause, SkipBack, SkipForward, Shuffle, Repeat,
-  Heart, Volume2, ListMusic, VolumeX, Volume1
-} from 'lucide-react';
-import styles from './ProgressBar.module.css';
+import React from 'react';
+import { Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Volume2, VolumeX, Heart, ListMusic } from 'lucide-react';
 import { useMusicStore } from '../store/musicStore';
-import { useUIStore } from '../store/uiStore'; // Import UI Store
-import QueuePopup from './QueuePopup';
-import FullScreenPlayer from './FullScreenPlayer'; // Import Player
-
-const formatTime = (time) => {
-  if (isNaN(time)) return '0:00';
-  const minutes = Math.floor(time / 60);
-  const seconds = Math.floor(time % 60);
-  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-};
+import { useUIStore } from '../store/uiStore';
+import { useAudio } from '../hooks/useAudio';
+import styles from './ProgressBar.module.css';
 
 const ProgressBar = () => {
-  const [showVolume, setShowVolume] = useState(false);
-  const [showQueue, setShowQueue] = useState(false);
-  
-  const { isPlayerOpen, openPlayer } = useUIStore(); // UI State
+  const { 
+    currentSong, 
+    isPlaying, 
+    togglePlay, 
+    nextSong, 
+    prevSong,
+    currentTime,
+    duration,
+    seek,
+    volume,
+    setVolume,
+    shuffle,
+    toggleShuffle,
+    repeat,
+    toggleRepeat,
+    toggleLike,
+    likedSongs
+  } = useMusicStore();
 
-  const currentSong = useMusicStore((state) => state.currentSong);
-  const isPlaying = useMusicStore((state) => state.isPlaying);
-  const currentTime = useMusicStore((state) => state.currentTime);
-  const duration = useMusicStore((state) => state.duration);
-  const shuffle = useMusicStore((state) => state.shuffle);
-  const repeat = useMusicStore((state) => state.repeat);
-  const volume = useMusicStore((state) => state.volume);
-  const likedSongs = useMusicStore((state) => state.likedSongs);
+  const { togglePlayer, toggleRightPanel, isRightPanelOpen } = useUIStore();
+  
+  // Custom hook to manage the actual HTML5 Audio element
+  useAudio();
 
-  const togglePlay = useMusicStore((state) => state.togglePlay);
-  const seek = useMusicStore((state) => state.seek);
-  const nextSong = useMusicStore((state) => state.nextSong);
-  const prevSong = useMusicStore((state) => state.prevSong);
-  const toggleShuffle = useMusicStore((state) => state.toggleShuffle);
-  const toggleRepeat = useMusicStore((state) => state.toggleRepeat);
-  const setVolume = useMusicStore((state) => state.setVolume);
-  const toggleLike = useMusicStore((state) => state.toggleLike);
-  
-  const progressBarRef = useRef(null);
-  
-  const handleProgressClick = (e) => {
-    e.stopPropagation(); // Stop click from bubbling to mini player
-    if (duration && progressBarRef.current) {
-      const rect = progressBarRef.current.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const barWidth = rect.width;
-      const percentage = Math.max(0, Math.min(1, clickX / barWidth));
-      const newTime = percentage * duration;
-      seek(newTime);
-    }
+  const formatTime = (time) => {
+    if (isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const progressPercentage = duration ? (currentTime / duration) * 100 : 0;
-  
+  // Fallback default just to satisfy type errors safely
+  const displaySong = currentSong || {
+    id: 'empty',
+    title: '',
+    artist: '',
+    cover: ''
+  };
+
+  const isLiked = currentSong ? likedSongs.includes(currentSong.id) : false;
+
+  const handleSeek = (e) => {
+    if (!currentSong) return;
+    const time = (e.target.value / 100) * duration;
+    seek(time);
+  };
+
   const handleVolumeChange = (e) => {
-    setVolume(Number(e.target.value));
-  };
-  
-  const VolumeIcon = () => {
-    if (volume === 0) return <VolumeX size={18} />;
-    if (volume < 0.5) return <Volume1 size={18} />;
-    return <Volume2 size={18} />;
+    setVolume(e.target.value / 100);
   };
 
-  const isCurrentSongLiked = currentSong ? likedSongs.includes(currentSong.id) : false;
+  const progressPercent = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <>
-      {isPlayerOpen && <FullScreenPlayer />}
-      <footer className={styles.progressBar}>
-        
-        <div className={styles.nowPlaying} onClick={openPlayer} style={{cursor: 'pointer'}}>
-          {currentSong ? (
-            <>
-              <img src={currentSong.cover} alt={currentSong.title} className={styles.songCover} />
-              <div className={styles.songInfo}>
-                <h4 className={styles.songTitle}>{currentSong.title}</h4>
-                <p className={styles.songArtist}>{currentSong.artist}</p>
-              </div>
-            </>
-          ) : (
-            <div className={styles.noSong}>Select a song to play</div>
-          )}
-        </div>
-
-        <div className={styles.playerControls}>
-          <div className={styles.controlButtons}>
-            <Shuffle 
-              size={18} 
-              className={`${styles.controlIcon} ${shuffle ? styles.activeIcon : ''}`} 
-              onClick={toggleShuffle} 
+    <div className={styles.playerContainer}>
+      {/* Left: Song Info */}
+      <div className={styles.songInfo} onClick={togglePlayer} style={{ cursor: 'pointer' }}>
+        {currentSong && (
+          <>
+            <img 
+              src={displaySong.cover} 
+              alt={displaySong.title} 
+              className={styles.coverImage} 
             />
-            <SkipBack 
-              size={20} 
-              className={styles.controlIcon} 
-              onClick={prevSong} 
-            />
-            <button className={styles.playButton} onClick={togglePlay}>
-              {isPlaying ? <Pause size={22} /> : <Play size={22} />}
-            </button>
-            <SkipForward 
-              size={20} 
-              className={styles.controlIcon} 
-              onClick={nextSong} 
-            />
-            <Repeat 
-              size={18} 
-              className={`${styles.controlIcon} ${repeat ? styles.activeIcon : ''}`} 
-              onClick={toggleRepeat} 
-            />
-          </div>
-          
-          <div className={styles.timeControls}>
-            <span>{formatTime(currentTime)}</span>
-            <div
-              className={styles.progressBarTrack}
-              ref={progressBarRef}
-              onClick={handleProgressClick}
-            >
-              <div
-                className={styles.progressBarFill}
-                style={{ width: `${progressPercentage}%` }}
-              ></div>
+            <div className={styles.songDetails}>
+              <h4>{displaySong.title}</h4>
+              <p>{displaySong.artist}</p>
             </div>
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
+          </>
+        )}
+      </div>
 
-        <div className={styles.extraControls}>
-          <button
-            className={`${styles.controlIcon} ${isCurrentSongLiked ? styles.activeIcon : ''}`}
-            onClick={() => currentSong && toggleLike(currentSong.id)}
+      {/* Center: Controls & Scrubber */}
+      <div className={styles.playerCentro}>
+        <div className={styles.controls}>
+          <button 
+            className={`${styles.controlBtn} ${shuffle ? styles.active : ''}`} 
+            onClick={toggleShuffle}
             disabled={!currentSong}
           >
-            <Heart 
-              size={18} 
-              fill={isCurrentSongLiked ? 'currentColor' : 'none'} 
-            />
+            <Shuffle size={18} />
+          </button>
+          <button className={styles.controlBtn} onClick={prevSong} disabled={!currentSong}>
+            <SkipBack size={20} />
           </button>
           
-          <div className={styles.volumeContainer}>
-            <div 
-              className={styles.volumeSliderWrapper}
-              style={{ display: showVolume ? 'flex' : 'none' }}
-            >
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={volume}
-                onChange={handleVolumeChange}
-                className={styles.volumeSlider}
-              />
-            </div>
-            <button 
-              className={styles.controlIcon}
-              onClick={() => setShowVolume(!showVolume)}
-            >
-              <VolumeIcon />
-            </button>
-          </div>
+          <button className={styles.playPauseBtn} onClick={togglePlay} disabled={!currentSong}>
+            {isPlaying ? (
+              <Pause size={24} fill="currentColor" />
+            ) : (
+              <Play size={24} fill="currentColor" className={styles.playIconFix} />
+            )}
+          </button>
           
-          {showQueue && <QueuePopup onClose={() => setShowQueue(false)} />}
-          
+          <button className={styles.controlBtn} onClick={nextSong} disabled={!currentSong}>
+            <SkipForward size={20} />
+          </button>
           <button 
-              className={`${styles.controlIcon} ${showQueue ? styles.activeIcon : ''}`}
-              onClick={() => setShowQueue(!showQueue)}
+             className={styles.likeBtn} 
+             onClick={() => currentSong && toggleLike(currentSong.id)}
+             disabled={!currentSong}
           >
-              <ListMusic size={18} />
+             <Heart size={18} fill={isLiked ? "var(--accent-primary)" : "none"} color={isLiked ? "var(--accent-primary)" : "var(--text-secondary)"} />
+          </button>
+          <button 
+            className={`${styles.controlBtn} ${repeat ? styles.active : ''}`} 
+            onClick={toggleRepeat}
+            disabled={!currentSong}
+          >
+            <Repeat size={18} />
           </button>
         </div>
 
-      </footer>
-    </>
+        <div className={styles.scrubberContainer}>
+          <span className={styles.timeText}>{formatTime(currentTime)}</span>
+          <div className={styles.sliderWrapper}>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={progressPercent}
+              onChange={handleSeek}
+              className={styles.slider}
+              disabled={!currentSong}
+              style={{
+                '--progress-width': `${progressPercent}%`
+              }}
+            />
+          </div>
+          <span className={styles.timeText}>{formatTime(duration)}</span>
+        </div>
+      </div>
+
+      {/* Right: Actions & Volume */}
+      <div className={styles.rightControls}>
+        <button 
+          className={styles.controlBtn} 
+          onClick={toggleRightPanel}
+          title="Toggle Queue"
+          style={{ opacity: isRightPanelOpen ? 1 : 0.5, marginRight: '16px' }}
+        >
+          <ListMusic size={18} />
+        </button>
+        <div className={styles.volumeContainer}>
+          <button 
+            className={styles.controlBtn} 
+            onClick={() => setVolume(volume === 0 ? 1 : 0)}
+          >
+            {volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </button>
+          <div className={styles.sliderWrapper} style={{ width: '80px' }}>
+             <input
+                type="range"
+                min="0"
+                max="100"
+                value={volume * 100}
+                onChange={handleVolumeChange}
+                className={styles.slider}
+                style={{
+                  '--progress-width': `${volume * 100}%`
+                }}
+              />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

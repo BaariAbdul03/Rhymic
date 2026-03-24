@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import styles from './SmartDJ.module.css';
 import { useMusicStore } from '../store/musicStore';
 import { useAuthStore } from '../store/authStore';
+import { smartDjApi } from '../services/api';
 import { Sparkles, Play } from 'lucide-react';
 
 const SmartDJ = () => {
@@ -30,33 +31,21 @@ const SmartDJ = () => {
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
     try {
-      const response = await fetch('/api/ai/recommend', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ prompt: prompt }),
-        signal: controller.signal // Attach signal
-      });
+      const response = await smartDjApi.recommend(prompt);
 
       clearTimeout(timeoutId); // Clear timeout if successful
 
-      if (response.ok) {
-        const data = await response.json();
-        // Backend returns relative paths (e.g., /assets/...) or absolute URLs
-        const processed = data.map(s => ({
-           ...s,
-           // Ensure we don't double-prefix if logic changes, but for now trust the backend/proxy
-           cover: s.cover,
-           src: s.src
-        }));
-        
-        setGeneratedSongs(processed);
-        if (processed.length > 0) setSongs(processed);
-      } else {
-        throw new Error("Server error");
-      }
+      const data = response.data;
+      // Backend returns relative paths (e.g., /assets/...) or absolute URLs
+      const processed = data.map(s => ({
+         ...s,
+         // Ensure we don't double-prefix if logic changes, but for now trust the backend/proxy
+         cover: s.cover,
+         src: s.src
+      }));
+      
+      setGeneratedSongs(processed);
+      if (processed.length > 0) setSongs(processed);
 
     } catch (error) {
       console.error("SmartDJ Error:", error);

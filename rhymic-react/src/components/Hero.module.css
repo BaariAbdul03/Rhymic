@@ -1,184 +1,168 @@
 .heroContainer {
-  width: 100%;
-  height: 300px;
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-  border-radius: 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 40px 60px;
-  box-sizing: border-box;
-  margin-bottom: 40px;
   position: relative;
-  overflow: hidden;
-  box-shadow: var(--card-shadow);
-  animation: fadeInDown 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.content {
-  z-index: 2;
-  max-width: 50%;
-}
-
-.tag {
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--accent-color);
-  font-weight: 700;
-  margin-bottom: 12px;
-  display: block;
-}
-
-.title {
-  font-size: 3rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin: 0 0 8px 0;
-  line-height: 1.1;
-}
-
-.artist {
-  font-size: 1.5rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  margin: 0 0 32px 0;
-}
-
-.controls {
-  display: flex;
-  gap: 16px;
-}
-
-.playButton {
-  background-color: var(--accent-color);
-  color: white;
-  border: none;
-  padding: 14px 32px;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: transform 0.2s, box-shadow 0.2s;
-  box-shadow: 0 10px 20px rgba(74, 144, 226, 0.3);
-}
-
-.playButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 15px 30px rgba(74, 144, 226, 0.4);
-}
-
-.addButton {
-  background: transparent;
-  border: 2px solid var(--border-color);
-  color: var(--text-secondary);
-  padding: 14px 24px;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.addButton:hover {
-  border-color: var(--text-secondary);
-  color: var(--text-primary);
-}
-
-.addButton.added {
-  background-color: rgba(255, 255, 255, 0.1);
-  border-color: var(--accent-color);
-  color: var(--accent-color);
-}
-
-.imageWrapper {
-  position: relative;
-  z-index: 2;
-  height: 240px;
-  width: 240px;
-}
-
-.heroImage {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  height: 350px;
   border-radius: 20px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-  position: relative;
-  z-index: 2;
+  overflow: hidden;
+  margin-bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 40px;
+  box-sizing: border-box;
 }
 
-.blurBackdrop {
+.heroBackground {
   position: absolute;
-  top: 20px;
+  top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   background-size: cover;
-  filter: blur(40px);
-  opacity: 0.6;
+  background-position: center 20%;
   z-index: 1;
-  transform: scale(1.2);
+  filter: blur(40px) brightness(0.6); /* Intelligent blending */
+  transform: scale(1.2); /* Hides blurred edges */
 }
 
-@keyframes fadeInDown {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.gradientOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(0, 0, 0, 0.6) 60%,
+    var(--bg-secondary) 100%
+  );
+  z-index: 2;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.contentLeft {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.contentRight {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.featuredCoverImg {
+  width: 220px;
+  height: 220px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+  transform: rotate(2deg);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.featuredCoverImg:hover {
+  transform: rotate(0deg) scale(1.05);
+}
+
+.featuredLabel {
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  background-color: var(--glass-bg);
+  padding: 4px 12px;
+  border-radius: 20px;
+  backdrop-filter: blur(8px);
+}
+
+.heroTitle {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -1px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.heroSubtitle {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 4px 0 24px 0;
+  letter-spacing: -0.5px;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.playButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 32px;
+  background-color: var(--accent-primary);
+  color: var(--accent-text);
+  border: none;
+  border-radius: 30px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.playButton:hover {
+  background-color: var(--accent-secondary);
+  transform: scale(1.02);
+}
+
+.addButton {
+  padding: 12px 32px;
+  background-color: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 30px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.addButton:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--text-primary);
 }
 
 @media (max-width: 768px) {
   .heroContainer {
-    flex-direction: column-reverse; /* Text below image */
-    height: auto;
+    height: 280px;
     padding: 24px;
-    align-items: center;
-    text-align: center;
+    border-radius: 12px;
   }
-
-  .content {
-    max-width: 100%;
-    z-index: 2;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  .heroTitle {
+    font-size: 2rem;
   }
-
-  .imageWrapper {
-    width: 180px;
-    height: 180px;
-    margin-bottom: 20px;
+  .heroSubtitle {
+    font-size: 1.25rem;
   }
-
-  .title {
-    font-size: 1.8rem;
-  }
-
-  .artist {
-    font-size: 1.1rem;
-    margin-bottom: 20px;
-  }
-
-  .controls {
-    width: 100%;
-    flex-direction: column; /* Stack buttons */
-    gap: 12px;
-  }
-
-  .playButton, .addButton {
-    width: 100%; /* Full width buttons */
-    justify-content: center;
+  .contentRight {
+    display: none;
   }
 }

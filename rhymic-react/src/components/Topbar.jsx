@@ -1,119 +1,151 @@
-// Topbar.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import styles from './Topbar.module.css';
-import { Search, User, Menu } from 'lucide-react';
-import { useMusicStore } from '../store/musicStore';
+import { Search, Menu, User as UserIcon, LogOut } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
+import { useMusicStore } from '../store/musicStore';
+import styles from './Topbar.module.css';
 
 const Topbar = () => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [isFocused, setIsFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchRef = useRef(null);
   
   const user = useAuthStore((state) => state.user);
-  const { toggleSidebar } = useUIStore();
-  
-  // Get songs and actions from the store
-  const allSongs = useMusicStore((state) => state.songs);
+  const toggleSidebar = useUIStore((state) => state.toggleSidebar);
+  const songs = useMusicStore((state) => state.songs);
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
 
-  // Filter songs when query changes
+  const logout = useAuthStore((state) => state.logout);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const getBreadcrumbs = () => {
+    const path = location.pathname;
+    if (path === '/') return 'Trending / Hits';
+    if (path === '/discover') return 'Discover / Genres';
+    if (path.startsWith('/playlist/')) return 'Library / Playlist';
+    if (path === '/liked') return 'Library / Favorite Songs';
+    if (path === '/dj') return 'AI / Smart DJ';
+    if (path === '/podcast') return 'Podcast';
+    if (path === '/local-files') return 'Library / Local Files';
+    return 'Rhymic';
+  };
+
   useEffect(() => {
-    if (query.trim() === '') {
-      setResults([]);
+    if (searchQuery.trim() === '') {
+      setSearchResults([]);
+      setIsDropdownOpen(false);
       return;
     }
     
-    const filtered = allSongs.filter(song =>
-      song.title.toLowerCase().includes(query.toLowerCase()) ||
-      song.artist.toLowerCase().includes(query.toLowerCase())
+    const filtered = songs.filter(song =>
+      song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      song.artist.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    setResults(filtered);
-  }, [query, allSongs]);
+    setSearchResults(filtered);
+    setIsDropdownOpen(true);
+  }, [searchQuery, songs]);
 
-  // Handle clicking a search result
   const handleResultClick = (song) => {
     setCurrentSong(song);
-    setQuery('');
-    setResults([]);
-    setIsFocused(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    setIsDropdownOpen(false);
   };
   
-  // Close results when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
-        setIsFocused(false);
+        setIsDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const PLACEHOLDER_IMG = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'%3E%3Crect width='150' height='150' fill='%23cccccc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Arial' font-size='24' fill='%23666666'%3EUser%3C/text%3E%3C/svg%3E";
-
   return (
-    <nav className={styles.topbar}>
-      <button className={styles.hamburger} onClick={toggleSidebar}>
-        <Menu size={24} />
-      </button>
+    <header className={styles.topbar}>
+      <div className={styles.leftSection}>
+        <button className={styles.hamburger} onClick={toggleSidebar}>
+          <Menu size={24} />
+        </button>
 
-      <div className={styles.searchWrapper} ref={searchRef}>
-        <div className={styles.searchContainer}>
-          <Search size={18} className={styles.searchIcon} />
-          <input
-            type="text"
-            placeholder="Search music, artists..."
+        <div className={styles.navControls}>
+          {/* Toggles Removed per user request */}
+        </div>
+
+        <div className={styles.breadcrumbs}>
+          {getBreadcrumbs()}
+        </div>
+      </div>
+
+      <div className={styles.searchContainer} ref={searchRef}>
+        <div className={styles.searchWrapper}>
+          <Search className={styles.searchIcon} size={18} />
+          <input 
+            type="text" 
+            placeholder="Search for artist, songs..." 
             className={styles.searchInput}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => setIsFocused(true)}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => {if(searchQuery.trim() !== '') setIsDropdownOpen(true)}}
           />
         </div>
-        
-        {/* Search Results Dropdown */}
-        {isFocused && (query.length > 0 || results.length > 0) && (
-          <div className={styles.resultsDropdown}>
-            {results.length > 0 ? (
-              results.map(song => (
-                <div 
-                  key={song.id} 
-                  className={styles.resultItem}
-                  onClick={() => handleResultClick(song)}
-                >
-                  <img src={song.cover} alt={song.title} className={styles.resultCover} />
-                  <div className={styles.resultInfo}>
-                    <h4>{song.title}</h4>
-                    <p>{song.artist}</p>
-                  </div>
+
+        {isDropdownOpen && searchResults.length > 0 && (
+          <div className={styles.searchResults}>
+            {searchResults.map((song) => (
+              <div 
+                key={song.id} 
+                className={styles.resultItem}
+                onClick={() => handleResultClick(song)}
+              >
+                <img src={song.cover} alt="cover" className={styles.resultCover} />
+                <div className={styles.resultInfo}>
+                  <p className={styles.resultTitle}>{song.title}</p>
+                  <p className={styles.resultArtist}>{song.artist}</p>
                 </div>
-              ))
-            ) : (
-              <div className={styles.noResults}>No results found</div>
-            )}
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {/* User/Subscribe Buttons */}
-      <div className={styles.userControls}>
-        {/* Link to Profile */}
-        <Link to="/profile" className={styles.userIcon} style={{padding: 0, overflow:'hidden'}}>
-          <img 
-            src={user?.profile_pic || PLACEHOLDER_IMG} 
-            alt="Profile" 
-            style={{width:'100%', height:'100%', objectFit:'cover'}} 
-            onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER_IMG; }}
-          />
-        </Link>
-        <Link to="/subscribe" className={styles.subscribeButton}>
-          Subscribe
-        </Link>
+      <div className={styles.rightSection}>
+        {/* Bell Icon Removed per user request */}
+
+        {user ? (
+          <div className={styles.userProfile} onClick={() => navigate('/profile')}>
+            {user.profile_pic ? (
+              <img src={user.profile_pic} alt="Profile" className={styles.profileImage} />
+            ) : (
+              <div className={styles.profileFallback}>
+                <UserIcon size={18} />
+              </div>
+            )}
+            <span className={styles.userName}>{user.name}</span>
+            <button 
+              className={styles.logoutBtn} 
+              onClick={(e) => { e.stopPropagation(); handleLogout(); }}
+              title="Logout"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
+        ) : (
+          <button className={styles.loginBtn} onClick={() => navigate('/login')}>
+            Log In
+          </button>
+        )}
       </div>
-    </nav>
+    </header>
   );
 };
 

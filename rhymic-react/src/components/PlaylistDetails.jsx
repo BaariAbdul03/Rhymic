@@ -17,8 +17,8 @@ const PlaylistDetails = () => {
   const likedSongs = useMusicStore((state) => state.likedSongs);
   const toggleLike = useMusicStore((state) => state.toggleLike);
   
-  // --- NEW: Get setSongs to update the queue ---
-  const setSongs = useMusicStore((state) => state.setSongs);
+  // --- NEW: Get setQueue to update the queue ---
+  const setQueue = useMusicStore((state) => state.setQueue);
 
   useEffect(() => {
     if (id) fetchPlaylistDetails(id);
@@ -38,7 +38,7 @@ const PlaylistDetails = () => {
   const handlePlayPlaylist = () => {
     if (currentPlaylist && currentPlaylist.songs.length > 0) {
       // 1. Update the Global Queue to THIS playlist
-      setSongs(currentPlaylist.songs);
+      setQueue(currentPlaylist.songs);
       // 2. Play the first song
       setCurrentSong(currentPlaylist.songs[0]);
     }
@@ -47,7 +47,7 @@ const PlaylistDetails = () => {
   // --- UPDATED: Play Specific Song ---
   const handlePlaySong = (song) => {
     // 1. Update the Global Queue to THIS playlist so next/shuffle works within context
-    setSongs(currentPlaylist.songs);
+    setQueue(currentPlaylist.songs);
     // 2. Play the clicked song
     setCurrentSong(song);
   };

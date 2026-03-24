@@ -1,103 +1,108 @@
-// src/components/TopSongs.jsx
-import React, { useEffect } from 'react';
-import styles from './TopSongs.module.css';
+import { Play, Heart, ListPlus, Clock, AudioLines } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useMusicStore } from '../store/musicStore';
-import { Play, Heart, PlusCircle } from 'lucide-react'; // <-- Import PlusCircle
+import toast from 'react-hot-toast';
+import styles from './TopSongs.module.css';
 
-const TopSongs = () => {
+const TopSongs = ({ limit, hideHeader }) => {
+  const navigate = useNavigate();
   const songs = useMusicStore((state) => state.songs);
   const currentSong = useMusicStore((state) => state.currentSong);
+  const isPlaying = useMusicStore((state) => state.isPlaying);
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
-  const likedSongs = useMusicStore((state) => state.likedSongs);
+  const togglePlay = useMusicStore((state) => state.togglePlay);
   const toggleLike = useMusicStore((state) => state.toggleLike);
-  const fetchSongs = useMusicStore((state) => state.fetchSongs);
-  
-  // New: Get playlists and add action
-  const playlists = useMusicStore((state) => state.playlists);
-  const addSongToPlaylist = useMusicStore((state) => state.addSongToPlaylist);
+  const likedSongs = useMusicStore((state) => state.likedSongs);
 
-  useEffect(() => {
-    if (songs.length === 0) fetchSongs();
-  }, [fetchSongs, songs.length]);
+  if (!songs || songs.length === 0) return null;
 
-  const handleLikeClick = (e, songId) => {
-    e.stopPropagation();
-    toggleLike(songId);
-  };
+  const displaySongs = limit ? songs.slice(0, limit) : songs;
 
-  // Simple handler for adding to playlist
-  const handleAddToPlaylist = (e, songId) => {
-    e.stopPropagation();
-    if (playlists.length === 0) {
-      alert("Create a playlist first!");
-      return;
-    }
-    
-    // Simple prompt for now (we can improve this UI later)
-    const playlistName = prompt(
-      `Type the name of the playlist to add to:\nAvailable: ${playlists.map(p => p.name).join(', ')}`
-    );
-    
-    if (playlistName) {
-      const targetPlaylist = playlists.find(p => p.name.toLowerCase() === playlistName.toLowerCase());
-      if (targetPlaylist) {
-        addSongToPlaylist(targetPlaylist.id, songId);
-      } else {
-        alert("Playlist not found.");
-      }
+  const handlePlayClick = (song) => {
+    if (currentSong?.id === song.id) {
+      togglePlay();
+    } else {
+      useMusicStore.setState({ queue: displaySongs });
+      setCurrentSong(song);
     }
   };
 
   return (
-    <aside className={styles.topSongs}> 
-      <h3 className={styles.title}>All Songs</h3> 
+    <div className={styles.tableContainer}>
+      {!hideHeader && (
+        <div className={styles.tableHeader}>
+          <div className={styles.colIndex}>#</div>
+          <div className={styles.colTitle}>TITLE</div>
+          <div className={styles.colTime}><Clock size={16}/></div>
+          <div className={styles.colAction}></div>
+        </div>
+      )}
       
-      <div className={styles.songList}>
-        {songs.length === 0 ? (
-          <p className={styles.loading}>Loading songs from Server...</p>
-        ) : (
-          songs.map((song) => {
-            const isActive = currentSong?.id === song.id;
-            const isLiked = likedSongs.includes(song.id);
-            
-            return (
-              <div
-                key={song.id}
-                onClick={() => setCurrentSong(song)}
-                className={`${styles.songItem} ${isActive ? styles.active : ''}`}
-              >
-                <div className={styles.songLeft}>
-                  <img src={song.cover} alt={song.title} className={styles.songCover} />
-                  <div className={styles.songInfo}>
-                    <h4>{song.title}</h4>
-                    <p>{song.artist}</p>
-                  </div>
-                </div>
+      <div className={styles.tableBody}>
+        {displaySongs.map((song, index) => {
+          const isActive = currentSong?.id === song.id;
+          const isLiked = likedSongs.includes(song.id);
 
-                <div className={styles.songRight}>
-                  {/* Add to Playlist Button */}
-                  <button 
-                    className={styles.likeButton} /* Reuse style for hover effect */
-                    onClick={(e) => handleAddToPlaylist(e, song.id)}
-                    title="Add to Playlist"
+          return (
+            <div 
+              key={song.id} 
+              className={`${styles.tableRow} ${isActive ? styles.activeRow : ''}`}
+            >
+              <div className={styles.colIndex}>
+                 {isActive && isPlaying ? (
+                    <AudioLines size={20} color="var(--accent-primary)" className={styles.playingGif} />
+                 ) : (
+                    <span className={styles.indexNumber}>{index + 1}</span>
+                 )}
+                 <button className={styles.playOverlay} onClick={() => handlePlayClick(song)}>
+                   <Play size={16} fill="currentColor" />
+                 </button>
+              </div>
+              
+              <div className={styles.colTitle}>
+                <img src={song.cover} alt={song.title} className={styles.songCover} />
+                <div className={styles.songInfo}>
+                  <p className={`${styles.songName} ${isActive ? styles.activeText : ''}`}>
+                    {song.title}
+                  </p>
+                  <p 
+                    className={styles.artistName} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                       navigate(`/artist/${encodeURIComponent(song.artist)}`);
+                    }}
+                    style={{cursor: 'pointer'}}
                   >
-                    <PlusCircle size={16} />
-                  </button>
-
-                  <button
-                    className={`${styles.likeButton} ${isLiked ? styles.likeActive : ''}`}
-                    onClick={(e) => handleLikeClick(e, song.id)}
-                  >
-                    <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
-                  </button>
-                  {isActive && <Play size={20} className={styles.playIcon} />}
+                    {song.artist}
+                  </p>
                 </div>
               </div>
-            );
-          })
-        )}
+              
+              <div className={styles.colTime}>
+                3:14
+              </div>
+              
+              <div className={styles.colAction}>
+                <button className={styles.actionBtn} onClick={() => toggleLike(song.id)}>
+                  <Heart size={18} fill={isLiked ? "var(--accent-primary)" : "none"} color={isLiked ? "var(--accent-primary)" : "var(--text-secondary)"}/>
+                </button>
+                <button 
+                  className={styles.actionBtn} 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    useMusicStore.getState().addToQueue(song);
+                    toast.success('Added to Queue');
+                  }}
+                  title="Add to Queue"
+                >
+                  <ListPlus size={20} />
+                </button>
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </aside>
+    </div>
   );
 };
 

@@ -1,4 +1,6 @@
-from app import app, db, scan_library
+from app import app
+from backend.extensions import db
+from backend.services.scanner import scan_library
 
 print("Initializing Database...")
 with app.app_context():
@@ -6,5 +8,5 @@ with app.app_context():
     print("Database tables created successfully!")
     
     print("Scanning Library...")
-    scan_library()
+    scan_library(app)
     print("Library scan complete!")

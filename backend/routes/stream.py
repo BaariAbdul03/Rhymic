@@ -171,56 +171,74 @@ def resolve_invidious_fallback(video_id):
 
 def resolve_via_node_service(video_id):
     """
-    Tier 0: Call the dedicated Node.js resolver microservice.
-    This runs on a separate Render service with a different IP pool,
-    bypassing YouTube's data-center IP blocks on the Flask service.
+    Tier 0: Call the dedicated Node.js resolver microservice (running internally).
     """
     resolver_url = "http://localhost:3001"
     resolver_key = os.environ.get('RESOLVER_API_KEY', 'rhymic-resolver-key')
     
-    if not resolver_url:
-        return None, None
-    
     try:
-        print(f"[NodeResolver] Attempting for {video_id} via {resolver_url}")
+        print(f"[NodeResolver] Attempting for {video_id}")
         resp = py_requests.get(
             f"{resolver_url}/resolve/{video_id}",
             headers={'x-resolver-key': resolver_key},
-            timeout=12
+            timeout=10
         )
         if resp.status_code == 200:
             data = resp.json()
             if data.get('url'):
                 print(f"[NodeResolver] Success for {video_id}")
                 return data['url'], data.get('mimeType', 'audio')
-        print(f"[NodeResolver] Failed: HTTP {resp.status_code}")
     except Exception as e:
         print(f"[NodeResolver] Error: {e}")
-    
     return None, None
 
+def resolve_via_cobalt(video_id):
+    """
+    Tier 4: Cobalt API. Very resilient third-party downloader API.
+    """
+    try:
+        print(f"[Cobalt] Attempting for {video_id}")
+        payload = {
+            "url": f"https://www.youtube.com/watch?v={video_id}",
+            "downloadMode": "audio",
+            "audioFormat": "mp3",
+            "youtubeVideoCodec": "h264",
+            "alwaysProxy": True
+        }
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        # Known healthy cobalt instances
+        for api_url in ["https://api.cobalt.tools", "https://cobalt.api.unext.cc"]:
+            try:
+                resp = py_requests.post(api_url, json=payload, headers=headers, timeout=10)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("status") == "stream" and data.get("url"):
+                        print(f"[Cobalt] Success via {api_url}")
+                        return data["url"], "audio/mp3"
+            except: continue
+    except Exception as e:
+        print(f"[Cobalt] Error: {e}")
+    return None, None
 
 def get_audio_stream_url(video_id):
     """
-    Four-Tiered Resolution (in order of reliability):
-    0. Node.js Resolver Service (separate Render IP — never blocked)
-    1. yt-dlp with aggressive spoofing (iOS/Android/Web)
-    2. Piped API instances (dynamic)
-    3. Invidious API instances (dynamic)
+    Five-Tiered Resolution:
+    0. Node.js Resolver (Internal)
+    1. yt-dlp (Aggressive Spoofing)
+    2. Piped API (Dynamic)
+    3. Invidious API (Dynamic)
+    4. Cobalt API (External)
     """
     url = f"https://music.youtube.com/watch?v={video_id}"
     
-    # Tier 0: Node.js resolver microservice (primary — different IP from Render)
+    # Tier 0: Node.js resolver
     stream_url, fmt = resolve_via_node_service(video_id)
-    if stream_url:
-        return stream_url, fmt
+    if stream_url: return stream_url, fmt
     
-    # Tier 1: yt-dlp with updated spoofing (iOS is currently less blocked)
+    # Tier 1: yt-dlp
     ydl_opts = {
         'format': 'bestaudio/best',
-        'quiet': True,
-        'no_warnings': True,
-        'noplaylist': True,
+        'quiet': True, 'no_warnings': True, 'noplaylist': True,
         'extractor_args': {
             'youtube': {
                 'player_client': ['ios', 'android', 'web_embedded'],
@@ -229,7 +247,6 @@ def get_audio_stream_url(video_id):
         },
         'socket_timeout': 5
     }
-    
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -237,18 +254,19 @@ def get_audio_stream_url(video_id):
             if stream_url:
                 print(f"[yt-dlp] Success for {video_id}")
                 return stream_url, info.get('format')
-    except Exception as e:
-        print(f"[yt-dlp] Failed: {e}")
+    except Exception: pass
     
-    # Tier 2: Piped Fallback (Resolution via community instances)
+    # Tier 2: Piped
     stream_url, fmt = resolve_piped_fallback(video_id)
-    if stream_url:
-        return stream_url, fmt
+    if stream_url: return stream_url, fmt
     
-    # Tier 3: Invidious Fallback (Resolution via community instances)
+    # Tier 3: Invidious
     stream_url, fmt = resolve_invidious_fallback(video_id)
-    if stream_url:
-        return stream_url, fmt
+    if stream_url: return stream_url, fmt
+    
+    # Tier 4: Cobalt
+    stream_url, fmt = resolve_via_cobalt(video_id)
+    if stream_url: return stream_url, fmt
     
     print(f"[Audio] ALL RESOLUTION TIERS FAILED for {video_id}")
     return None, None
@@ -257,19 +275,15 @@ def get_audio_stream_url(video_id):
 @jwt_required()
 def search_online():
     query = request.args.get('q')
-    if not query:
-        return jsonify({"message": "Query required"}), 400
-        
+    if not query: return jsonify({"message": "Query required"}), 400
     try:
         raw = ytmusic.search(query, filter="songs")
-        
         results = []
         for item in raw[:15]:
             artists = ", ".join([a['name'] for a in item.get('artists', [])])
             thumbs = item.get('thumbnails', [])
             cover = fix_thumbnail(thumbs[-1]['url']) if thumbs else ''
             album = item.get('album', {})
-            
             results.append({
                 "id": item.get('videoId'),
                 "title": item.get('title'),
@@ -279,24 +293,27 @@ def search_online():
                 "album": album.get('name') if album else None,
                 "source": "online"
             })
-            
         return jsonify(results), 200
     except Exception as e:
-        print(f"[Stream Search Error] {e}")
-        return jsonify({"message": "Search failed. Please try again."}), 500
+        print(f"[Search Error] {e}")
+        return jsonify({"message": "Search failed"}), 500
 
 @stream_bp.route('/audio/<video_id>', methods=['GET'])
 @jwt_required()
 def get_audio_url(video_id):
-    """Resolves a videoId to a direct audio stream URL via yt-dlp."""
+    """Resolves a videoId to a direct audio stream URL."""
     try:
         audio_url, fmt = get_audio_stream_url(video_id)
         if not audio_url:
-            return jsonify({"message": "Audio stream not found"}), 404
+            piped, invidious = _get_instances()
+            return jsonify({
+                "message": "All resolution tiers failed.",
+                "debug": f"Piped:{len(piped)} Inv:{len(invidious)}",
+                "suggestion": "Check server logs for bot detection or instance failures."
+            }), 404
         return jsonify({"url": audio_url, "format": fmt}), 200
     except Exception as e:
-        print(f"[Stream Audio Error] {e}")
-        return jsonify({"message": "Failed to resolve audio stream"}), 500
+        return jsonify({"message": str(e)}), 500
 
 @stream_bp.route('/proxy/<video_id>', methods=['GET'])
 def proxy_audio(video_id):

@@ -1,4 +1,4 @@
-#!/usr/env bash
+#!/usr/bin/env bash
 set -o errexit
 
 echo "Installing Python Dependencies..."

@@ -175,7 +175,7 @@ def resolve_via_node_service(video_id):
     This runs on a separate Render service with a different IP pool,
     bypassing YouTube's data-center IP blocks on the Flask service.
     """
-    resolver_url = os.environ.get('RESOLVER_SERVICE_URL', '').rstrip('/')
+    resolver_url = "http://localhost:3001"
     resolver_key = os.environ.get('RESOLVER_API_KEY', 'rhymic-resolver-key')
     
     if not resolver_url:

@@ -7,7 +7,6 @@ import styles from './Discover.module.css';
 const Discover = () => {
   const { playlists, fetchPlaylists, aiCategories, fetchAiCategories } = useMusicStore();
   const [loading, setLoading] = useState(true);
-  const [isAiLoading, setIsAiLoading] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -19,7 +18,10 @@ const Discover = () => {
       const systems = p.filter(pl => pl.is_system);
       const systemNames = systems.map(s => s.name);
       
-      if (!useMusicStore.getState().aiCategories && systemNames.length > 0) {
+      const currentAiCategories = useMusicStore.getState().aiCategories;
+      const needsAiFetch = !currentAiCategories || Object.keys(currentAiCategories).length === 0;
+      
+      if (needsAiFetch && systemNames.length > 0) {
         // Fire and forget - don't block the UI!
         fetchAiCategories(systemNames).catch(console.error);
       }

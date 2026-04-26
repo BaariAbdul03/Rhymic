@@ -7,6 +7,7 @@ load_dotenv()
 class Config:
     # Use fallback only in development
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-do-not-use-in-prod')
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-jwt-secret-do-not-use-in-prod')
     
     # DB Config
     database_url = os.environ.get('DATABASE_URL')
@@ -28,6 +29,10 @@ class Config:
     
     # Allowed CORS Origins
     ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*').split(',')
+
+    # Supabase (Storage & General API)
+    SUPABASE_URL = os.environ.get('SUPABASE_URL')
+    SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')
 
 class DevelopmentConfig(Config):
     DEBUG = True

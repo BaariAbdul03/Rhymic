@@ -1,12 +1,11 @@
-#!/usr/bin/env bash
-# exit on error
+#!/usr/env bash
 set -o errexit
 
 echo "Installing Python Dependencies..."
 pip install -r requirements.txt
 
-echo "Initializing Database..."
-python init_db.py
+echo "Running Database Migrations..."
+flask db upgrade
 
 echo "Building React Frontend..."
 cd rhymic-react

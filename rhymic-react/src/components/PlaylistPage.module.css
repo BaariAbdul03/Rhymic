@@ -68,13 +68,88 @@
   margin-bottom: 8px;
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
 .title {
   font-size: 4.5rem; /* Massive Title */
   font-weight: 900;
   color: white;
-  margin: 0 0 24px 0;
+  margin: 0;
   line-height: 1;
   letter-spacing: -0.02em;
+}
+
+.playlistActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actionBtn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.actionBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.dangerBtn:hover {
+  background: rgba(255, 59, 48, 0.2);
+  border-color: #ff3b30;
+  color: #ff3b30;
+}
+
+.renameForm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.renameInput {
+  font-size: 3rem;
+  font-weight: 800;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid var(--accent-primary);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 8px;
+  outline: none;
+  max-width: 400px;
+}
+
+.renameBtn {
+  background: var(--accent-primary);
+  border: none;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  color: black;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.renameBtn:hover {
+  opacity: 0.8;
 }
 
 .meta {
@@ -245,4 +320,37 @@
   .songRight {
     gap: 12px;
   }
+}
+
+.skeleton {
+  background: var(--glass-bg, rgba(255,255,255,0.05));
+  border-radius: 8px;
+  animation: pulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.skeletonCover {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: inherit;
+  opacity: 0.5;
+}
+.skeletonTitle {
+  width: 120px;
+  height: 16px;
+  border-radius: 4px;
+  background: inherit;
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+.skeletonArtist {
+  width: 80px;
+  height: 12px;
+  border-radius: 4px;
+  background: inherit;
+  opacity: 0.4;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }

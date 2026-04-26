@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, SkipBack, SkipForward, Play, Pause, Shuffle, Repeat, ListMusic, Volume2, VolumeX } from 'lucide-react';
+import { ChevronDown, SkipBack, SkipForward, Play, Pause, Shuffle, Repeat, ListMusic, Volume2, VolumeX, Activity, Sliders } from 'lucide-react';
 import { useMusicStore } from '../store/musicStore';
 import { useUIStore } from '../store/uiStore';
+import SongCover from './SongCover';
 import styles from './MobilePlayer.module.css';
 
 const MobilePlayer = () => {
@@ -10,6 +11,10 @@ const MobilePlayer = () => {
   const isPlayerOpen = useUIStore(state => state.isPlayerOpen);
   const closePlayer = useUIStore(state => state.closePlayer);
   const toggleRightPanel = useUIStore(state => state.toggleRightPanel);
+  const isVisualizerOpen = useUIStore(state => state.isVisualizerOpen);
+  const toggleVisualizer = useUIStore(state => state.toggleVisualizer);
+  const isAudioLabOpen = useUIStore(state => state.isAudioLabOpen);
+  const toggleAudioLab = useUIStore(state => state.toggleAudioLab);
 
   const { 
     currentSong, isPlaying, togglePlay, nextSong, prevSong,
@@ -17,12 +22,21 @@ const MobilePlayer = () => {
     volume, setVolume
   } = useMusicStore();
 
-  if (!isPlayerOpen) return null;
+  // 3D Tilt Effect State
+  const coverRef = useRef(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  // FIX C-3: Do NOT return null before the AnimatePresence wrapper.
+  // Doing so means the motion.div is never in the React tree when isPlayerOpen
+  // becomes false, so AnimatePresence can never animate it out (exit prop
+  // requires the element to be present and then removed from the tree by
+  // AnimatePresence's own conditional rendering).
+  // Solution: move the conditional inside AnimatePresence as a child guard.
 
   const displaySong = currentSong || {
     title: 'No Song Playing',
     artist: '--',
-    cover: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?q=80&w=1000&auto=format&fit=crop'
+    cover: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?q=80&w=1000'
   };
 
   const formatTime = (time) => {
@@ -43,8 +57,27 @@ const MobilePlayer = () => {
     setVolume(e.target.value / 100);
   };
 
+  // Handle 3D Tilt
+  const handleMouseMove = (e) => {
+    if (!coverRef.current) return;
+    const rect = coverRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Calculate rotation (-15 to +15 degrees)
+    const rotateY = ((x / rect.width) - 0.5) * 30;
+    const rotateX = ((y / rect.height) - 0.5) * -30;
+    
+    setTilt({ x: rotateX, y: rotateY });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
+  };
+
   return (
     <AnimatePresence>
+      {isPlayerOpen && (
       <motion.div 
         className={styles.mobileOverlay}
         initial={{ y: '100%' }}
@@ -55,29 +88,111 @@ const MobilePlayer = () => {
         <div 
           className={styles.overlayBackground} 
           style={{ backgroundImage: `url("${displaySong.cover}")` }}
-        />
+        >
+           <div className={styles.animatedGradientOverlay}></div>
+        </div>
         
         <div className={styles.contentWrapper}>
           {/* Header */}
           <div className={styles.header}>
-            <button className={styles.iconBtn} onClick={closePlayer} title="Close Player">
+            <motion.button 
+              whileTap={{ scale: 0.9 }}
+              className={styles.iconBtn} 
+              onClick={closePlayer} 
+              title="Close Player"
+            >
               <ChevronDown size={24} />
-            </button>
+            </motion.button>
             <span className={styles.brand}>Rhymic</span>
-            <button className={styles.iconBtn} onClick={toggleRightPanel} title="Queue">
-               <ListMusic size={20} />
-            </button>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <motion.button 
+                whileTap={{ scale: 0.9 }}
+                className={styles.iconBtn} 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleAudioLab();
+                }} 
+                title="Audio Lab"
+              >
+                 <Sliders size={20} style={{ color: isAudioLabOpen ? 'var(--accent-primary)' : 'inherit' }} />
+              </motion.button>
+              <motion.button 
+                whileTap={{ scale: 0.9 }}
+                className={styles.iconBtn} 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleVisualizer();
+                }} 
+                title="Visualizer"
+              >
+                 <Activity size={20} style={{ color: isVisualizerOpen ? 'var(--accent-primary)' : 'inherit' }} />
+              </motion.button>
+              <motion.button 
+                whileTap={{ scale: 0.9 }}
+                className={styles.iconBtn} 
+                onClick={toggleRightPanel} 
+                title="Queue"
+              >
+                 <ListMusic size={20} />
+              </motion.button>
+            </div>
           </div>
 
           {/* Cover Art */}
           <div className={styles.coverContainer}>
-            <img src={displaySong.cover} alt="Cover" className={styles.coverImage} />
+            <motion.div 
+              ref={coverRef}
+              className={styles.perspectiveWrapper}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              onTouchMove={(e) => {
+                 const touch = e.touches[0];
+                 handleMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
+              }}
+              onTouchEnd={handleMouseLeave}
+              animate={{ rotateX: tilt.x, rotateY: tilt.y }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            >
+              <AnimatePresence mode="wait">
+                <SongCover 
+                  key={displaySong.id}
+                  src={displaySong.cover} 
+                  alt="Cover" 
+                  className={styles.coverImage} 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.1 }}
+                  transition={{ duration: 0.4 }}
+                />
+              </AnimatePresence>
+            </motion.div>
           </div>
 
           {/* Info */}
           <div className={styles.infoSection}>
-            <h2 className={styles.title}>{displaySong.title}</h2>
-            <p className={styles.artist}>{displaySong.artist}</p>
+            <AnimatePresence mode="wait">
+              <motion.h2 
+                key={`title-${displaySong.id}`}
+                className={styles.title}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                {displaySong.title}
+              </motion.h2>
+            </AnimatePresence>
+             <AnimatePresence mode="wait">
+              <motion.p 
+                key={`artist-${displaySong.id}`}
+                className={styles.artist}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ delay: 0.1 }}
+              >
+                {displaySong.artist}
+              </motion.p>
+            </AnimatePresence>
           </div>
 
           {/* Scrubber */}
@@ -94,49 +209,79 @@ const MobilePlayer = () => {
               />
             </div>
             <div className={styles.timeContainer}>
-              <span>{formatTime(currentTime)}</span>
-              <span>-{formatTime(duration - currentTime)}</span>
+              <span className={styles.timeText}>{formatTime(currentTime)}</span>
+              <span className={styles.timeText}>-{formatTime(duration - currentTime)}</span>
             </div>
           </div>
 
           {/* Controls */}
           <div className={styles.controlsWrapper}>
             <div className={styles.controlsSection}>
-              <button 
+              <motion.button 
+                whileTap={{ scale: 0.8 }}
                 className={`${styles.transportBtn} ${shuffle ? styles.active : ''}`} 
                 onClick={toggleShuffle}
               >
                 <Shuffle size={24} />
-              </button>
-              <button className={styles.transportBtn} onClick={prevSong}>
+              </motion.button>
+              <motion.button whileTap={{ scale: 0.8 }} className={styles.transportBtn} onClick={prevSong}>
                 <SkipBack size={32} fill="currentColor" />
-              </button>
-              <button className={styles.playBtn} onClick={togglePlay}>
-                {isPlaying ? (
-                  <Pause size={32} fill="currentColor" />
-                ) : (
-                  <Play size={32} fill="currentColor" className={styles.playIconFix} />
-                )}
-              </button>
-              <button className={styles.transportBtn} onClick={nextSong}>
+              </motion.button>
+
+              <motion.button 
+                whileTap={{ scale: 0.9 }} 
+                className={styles.playBtn} 
+                onClick={togglePlay}
+              >
+                 <AnimatePresence mode="wait">
+                    {isPlaying ? (
+                      <motion.div
+                        key="pause"
+                        initial={{ scale: 0.5, opacity: 0, rotate: -90 }}
+                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                        exit={{ scale: 0.5, opacity: 0, rotate: 90 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        style={{ display: 'flex' }}
+                      >
+                        <Pause size={32} fill="currentColor" />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="play"
+                        initial={{ scale: 0.5, opacity: 0, rotate: -90 }}
+                        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                        exit={{ scale: 0.5, opacity: 0, rotate: 90 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                        style={{ display: 'flex' }}
+                        className={styles.playIconFix}
+                      >
+                        <Play size={32} fill="currentColor" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+              </motion.button>
+
+              <motion.button whileTap={{ scale: 0.8 }} className={styles.transportBtn} onClick={nextSong}>
                 <SkipForward size={32} fill="currentColor" />
-              </button>
-              <button 
+              </motion.button>
+              <motion.button 
+                whileTap={{ scale: 0.8 }}
                 className={`${styles.transportBtn} ${repeat ? styles.active : ''}`} 
                 onClick={toggleRepeat}
               >
                 <Repeat size={24} />
-              </button>
+              </motion.button>
             </div>
 
             {/* Desktop Volume Slider */}
             <div className={styles.desktopVolume}>
-              <button 
+              <motion.button 
+                whileTap={{ scale: 0.9 }}
                 className={styles.transportBtn} 
                 onClick={() => setShowVolume(!showVolume)}
               >
                 {volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
-              </button>
+              </motion.button>
               <div className={`${styles.volumeSliderContainer} ${showVolume ? styles.expanded : ''}`}>
                 <input
                   type="range"
@@ -152,6 +297,7 @@ const MobilePlayer = () => {
           </div>
         </div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 };

@@ -10,12 +10,29 @@
 .desktopOverlay {
   position: fixed;
   top: 0; right: 0; bottom: 0;
-  width: 400px;
+  min-width: 300px;
+  max-width: 600px;
   z-index: 15000;
   background: rgba(18, 18, 18, 0.95);
   backdrop-filter: blur(50px);
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: -20px 0 50px rgba(0,0,0,0.8);
+}
+
+.resizeHandle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 12px; /* Slightly wider for easier grab */
+  cursor: ew-resize;
+  z-index: 20000;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.resizeHandle:hover {
+  background: linear-gradient(to right, rgba(200, 164, 78, 0.4), transparent);
 }
 
 .drawerHeader {
@@ -109,7 +126,7 @@
 .circleIcon {
   display: flex;
   align-items: center;
-  justify-content: justify-start;
+  justify-content: flex-start;
   margin-right: 16px;
   width: 24px;
 }
@@ -177,17 +194,35 @@
   .rightPanel {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    width: 100vw;
+    /* Do NOT use width: 100vw — on mobile browsers 100vw includes scrollbar/system UI
+       and becomes wider than the visible viewport, pushing content off-screen.
+       left:0 + right:0 already makes it span the full viewport correctly. */
     height: 100vh;
     z-index: 15000;
     background: rgba(18, 18, 18, 0.98);
     backdrop-filter: blur(40px);
     -webkit-backdrop-filter: blur(40px);
     border-left: none;
-    padding: 24px 24px 80px 24px;
+    padding: 24px 20px 80px 20px;
+    overflow: hidden; /* Hard clip boundary — nothing escapes the panel */
+    box-sizing: border-box;
+  }
+
+  /* Reset the desktop scrollbar-offset trick which clips content on mobile */
+  .queueContainer {
+    margin-right: 0;
+    padding-right: 0;
+    overflow-x: visible; /* Let the panel's overflow:hidden act as the clip boundary */
+  }
+
+  /* Ensure queue items don't overflow their container on narrow screens */
+  .queueItem {
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .mobileOnlyBtn {
     display: flex;
   }
 }
+

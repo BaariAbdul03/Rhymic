@@ -1,0 +1,52 @@
+.orbContainer {
+  position: fixed;
+  bottom: 80px; /* Above the progress bar */
+  left: 24px;
+  z-index: 100;
+  pointer-events: none; /* Let clicks pass through to whatever is behind */
+}
+
+@media (max-width: 1024px) {
+  .orbContainer {
+    display: none; /* Avoid cluttering mobile UI, the mood Engine still works via the document styling updates */
+  }
+}
+
+.moodLabel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  padding: 8px 16px 8px 8px;
+  border-radius: 30px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.orbIndicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  position: relative;
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.spinner {
+  position: absolute;
+  top: -2px; left: -2px; right: -2px; bottom: -2px;
+  border: 2px solid transparent;
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

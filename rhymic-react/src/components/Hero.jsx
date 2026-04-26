@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Play } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
+import SongCover from './SongCover';
 import styles from './Hero.module.css';
 
 const Hero = () => {
@@ -9,18 +11,25 @@ const Hero = () => {
   const songs = useMusicStore((state) => state.songs);
   const playNext = useMusicStore((state) => state.playNext);
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
+  
+  const [featuredSong, setFeaturedSong] = useState(null);
+  const [scrollY, setScrollY] = useState(0);
 
-  // Pick a random song for the Hero Banner feature
-  const [featuredSong, setFeaturedSong] = React.useState(null);
-
-  React.useEffect(() => {
+  useEffect(() => {
     if (songs && songs.length > 0 && !featuredSong) {
       const randomIndex = Math.floor(Math.random() * songs.length);
       setFeaturedSong(songs[randomIndex]);
     }
   }, [songs, featuredSong]);
 
-  // Fallback if no songs loaded yet
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   if (!songs || songs.length === 0 || !featuredSong) return null;
 
   const handlePlay = () => {
@@ -30,31 +39,65 @@ const Hero = () => {
 
   const handleAdd = () => {
     playNext(featuredSong);
-    // Could also show a toast here
+  };
+
+  const labelVariants = {
+    hidden: { opacity: 0, width: 0 },
+    visible: { 
+      opacity: 1, 
+      width: 'auto',
+      transition: { duration: 1, ease: 'easeOut' }
+    }
   };
 
   return (
     <div className={styles.heroContainer}>
       <div 
         className={styles.heroBackground}
-        style={{ backgroundImage: `url(${featuredSong?.cover || 'https://images.unsplash.com/photo-1540039155733-d7696d4eb98b?q=80'})` }}
+        style={{ 
+          backgroundImage: `url("${featuredSong?.cover || 'https://images.unsplash.com/photo-1540039155733-d7696d4eb98b?q=80'}")`,
+          transform: `scale(1.2) translateY(${scrollY * 0.3}px)`
+        }}
       >
         <div className={styles.gradientOverlay}></div>
       </div>
       
       <div className={styles.heroContent}>
         <div className={styles.contentLeft}>
-          <span className={styles.featuredLabel}>• FEATURED ARTIST</span>
-          <h1 
+           <motion.div 
+             className={styles.featuredLabelWrapper}
+             initial="hidden"
+             animate="visible"
+             variants={labelVariants}
+             style={{ overflow: 'hidden', whiteSpace: 'nowrap' }}
+           >
+             <span className={styles.featuredLabel}>• FEATURED ARTIST</span>
+           </motion.div>
+          <motion.h1 
             className={styles.heroTitle}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.6 }}
             onClick={() => navigate(`/artist/${encodeURIComponent(featuredSong?.artist)}`)}
             style={{cursor: 'pointer'}}
           >
             {featuredSong?.artist || 'Unknown Artist'}
-          </h1>
-          <h2 className={styles.heroSubtitle}>{featuredSong?.title || 'Unknown Title'}</h2>
+          </motion.h1>
+          <motion.h2 
+            className={styles.heroSubtitle}
+             initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.6 }}
+          >
+            {featuredSong?.title || 'Unknown Title'}
+          </motion.h2>
           
-          <div className={styles.actionButtons}>
+          <motion.div 
+            className={styles.actionButtons}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+          >
             <button className={styles.playButton} onClick={handlePlay}>
               <Play size={20} fill="currentColor" />
               Play
@@ -62,13 +105,17 @@ const Hero = () => {
             <button className={styles.addButton} onClick={handleAdd}>
               Add to Queue
             </button>
-          </div>
+          </motion.div>
         </div>
         
-        {/* Adds a sharp crisp version of the cover floating slightly alongside the blurred bg for top-tier SaaS aesthetic */}
-        <div className={styles.contentRight}>
-          <img src={featuredSong?.cover} alt={featuredSong?.title} className={styles.featuredCoverImg} />
-        </div>
+        <motion.div 
+          className={styles.contentRight}
+          initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
+          animate={{ opacity: 1, scale: 1, rotate: 2 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.3 }}
+        >
+          <SongCover src={featuredSong?.cover} alt={featuredSong?.title} className={styles.featuredCoverImg} />
+        </motion.div>
       </div>
     </div>
   );

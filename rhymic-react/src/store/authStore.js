@@ -4,6 +4,7 @@ import { authApi } from '../services/api';
 export const useAuthStore = create((set, get) => ({
   user: JSON.parse(localStorage.getItem('user')) || null,
   token: localStorage.getItem('token') || null,
+  tempToken: null,
   error: null,
 
   login: async (email, password) => {
@@ -11,6 +12,11 @@ export const useAuthStore = create((set, get) => ({
     try {
       const response = await authApi.login(email, password);
       const data = response.data;
+
+      if (data['2fa_required']) {
+        set({ tempToken: data.temp_token });
+        return '2fa_required';
+      }
 
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
@@ -30,6 +36,73 @@ export const useAuthStore = create((set, get) => ({
       return true;
     } catch (err) {
       set({ error: err.response?.data?.message || 'Signup failed.' });
+      return false;
+    }
+  },
+
+  forgotPassword: async (email) => {
+    set({ error: null });
+    try {
+      const response = await authApi.forgotPassword(email);
+      return response.data;
+    } catch (err) {
+      set({ error: err.response?.data?.message || 'Failed to request reset.' });
+      return false;
+    }
+  },
+
+  resetPassword: async (email, pin, newPassword) => {
+    set({ error: null });
+    try {
+      const response = await authApi.resetPassword(email, pin, newPassword);
+      return response.data;
+    } catch (err) {
+      set({ error: err.response?.data?.message || 'Failed to reset password.' });
+      return false;
+    }
+  },
+
+  verify2FA: async (code) => {
+    set({ error: null });
+    try {
+      const tempToken = get().tempToken;
+      const response = await authApi.verify2FA(code, tempToken);
+      const data = response.data;
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      set({ user: data.user, token: data.token, tempToken: null });
+      return true;
+    } catch (err) {
+      set({ error: err.response?.data?.message || 'Invalid 2FA code.' });
+      return false;
+    }
+  },
+
+  setup2FA: async () => {
+    set({ error: null });
+    try {
+      const response = await authApi.setup2FA();
+      return response.data; // { secret, qr_code }
+    } catch (err) {
+      set({ error: err.response?.data?.message || 'Failed to setup 2FA.' });
+      return null;
+    }
+  },
+
+  enable2FA: async (code) => {
+    set({ error: null });
+    try {
+      await authApi.enable2FA(code);
+      // Update local user state
+      set((state) => {
+        if (!state.user) return state;
+        const newUser = { ...state.user, is_two_factor_enabled: true };
+        localStorage.setItem('user', JSON.stringify(newUser));
+        return { user: newUser };
+      });
+      return true;
+    } catch (err) {
+      set({ error: err.response?.data?.message || 'Invalid 2FA code.' });
       return false;
     }
   },

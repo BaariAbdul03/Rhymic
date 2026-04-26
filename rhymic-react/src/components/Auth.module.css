@@ -2,34 +2,95 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100%;
-  width: 100%;
-  padding: 20px;
+  min-height: 100vh;
+  width: 100vw;
   box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-primary, #0a0a0a);
+}
+
+.authBackground {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(80px) brightness(0.4);
+  transform: scale(1.2);
+  z-index: 0;
+}
+
+.authBackgroundMobile {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .authBackground {
+    display: none;
+  }
 }
 
 .authCard {
-  background-color: var(--bg-secondary);
+  position: relative;
+  z-index: 10;
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
   padding: 40px;
-  border-radius: 16px;
-  box-shadow: var(--card-shadow);
-  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  background: rgba(18, 18, 18, 0.6);
+  backdrop-filter: blur(60px);
+  -webkit-backdrop-filter: blur(60px);
+  box-shadow: 0 32px 64px rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.08);
   text-align: center;
 }
 
+@media (max-width: 600px) {
+  .authCard {
+    max-width: 100%;
+    width: calc(100vw - 32px);
+    padding: 32px 24px;
+  }
+}
+
+.logoArea {
+  margin-bottom: 32px;
+}
+
+.logoText {
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--text-primary, #fff);
+  margin: 0;
+  letter-spacing: -1px;
+}
+
+.logoAccent {
+  color: var(--accent-primary, #d4af37);
+}
+
 .title {
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: var(--text-primary, #fff);
   margin-bottom: 8px;
 }
 
 .subtitle {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+  font-size: 0.95rem;
+  color: var(--text-secondary, rgba(255,255,255,0.6));
   margin-bottom: 32px;
+}
+
+.errorPill {
+  background: rgba(255,60,60,0.15);
+  color: #ff4d4d;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 24px;
+  border: 1px solid rgba(255,60,60,0.3);
 }
 
 .form {
@@ -48,55 +109,164 @@
 .inputGroup label {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-secondary, rgba(255,255,255,0.7));
+  margin-left: 4px;
 }
 
-.inputGroup input {
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  outline: none;
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.inputWrapper:focus-within {
+  transform: scale(1.01);
+  box-shadow: 0 0 0 2px var(--accent-primary, #d4af37);
+  border-color: transparent;
+  background: rgba(255,255,255,0.08);
+}
+
+.inputWrapper.invalid {
+  border-color: #ff4d4d;
+  box-shadow: 0 0 0 1px #ff4d4d;
+}
+
+.inputIcon {
+  position: absolute;
+  left: 16px;
+  color: var(--text-secondary, rgba(255,255,255,0.5));
+  pointer-events: none;
+}
+
+.inputField {
+  width: 100%;
+  padding: 14px 16px 14px 48px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary, #fff);
   font-size: 1rem;
-  transition: border-color 0.2s;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  outline: none;
+  min-height: 44px;
 }
 
-.inputGroup input:focus {
-  border-color: var(--accent-color);
+.validIcon {
+  position: absolute;
+  right: 16px;
+  color: #4cd964;
+  pointer-events: none;
+}
+
+.togglePasswordBtn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary, rgba(255,255,255,0.5));
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  min-height: 44px;
+}
+
+.togglePasswordBtn:hover {
+  color: var(--text-primary, #fff);
+}
+
+.validationError {
+  color: #ff4d4d;
+  font-size: 0.8rem;
+  margin-left: 4px;
+  margin-top: -4px;
+}
+
+.passwordStrength {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+.strengthSegment {
+  height: 4px;
+  flex: 1;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  transition: background-color 0.3s ease;
 }
 
 .submitButton {
   margin-top: 12px;
-  padding: 12px;
-  border-radius: 8px;
+  padding: 16px;
+  border-radius: 12px;
   border: none;
-  background-color: var(--accent-color);
-  color: var(--accent-text);
+  background: linear-gradient(135deg, var(--accent-primary, #d4af37) 0%, #ffde59 100%);
+  color: #000;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s;
+  transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
 }
 
-.submitButton:hover {
-  opacity: 0.9;
+.submitButton:hover:not(:disabled) {
+  transform: scale(1.02);
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
 }
-.submitButton:active {
+
+.submitButton:active:not(:disabled) {
   transform: scale(0.98);
 }
 
-.footerText {
-  margin-top: 24px;
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+.submitButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
 }
 
-.footerText a {
-  color: var(--accent-color);
-  text-decoration: none;
-  font-weight: 600;
+.loader {
+  border: 3px solid rgba(0,0,0,0.2);
+  border-top: 3px solid #000;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
 }
-.footerText a:hover {
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.footerText {
+  margin-top: 32px;
+  font-size: 0.95rem;
+  color: var(--text-secondary, rgba(255,255,255,0.7));
+}
+
+.toggleLink {
+  color: var(--text-primary, #fff);
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 6px;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.toggleLink:hover {
+  color: var(--accent-primary, #d4af37);
   text-decoration: underline;
 }

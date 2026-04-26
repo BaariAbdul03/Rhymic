@@ -2,7 +2,7 @@ import os
 import time
 import json
 import re
-import google.generativeai as genai
+from google import genai
 from backend.extensions import db
 from backend.models.song import Song
 
@@ -18,8 +18,7 @@ def auto_fix_metadata(app):
         print("WARNING: GOOGLE_API_KEY not found. AI metadata fixer will fail.")
         return
         
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(ai_model_name)
+    client = genai.Client(api_key=api_key)
     
     print("Metadata Fixer: Background thread started.")
     
@@ -49,7 +48,7 @@ def auto_fix_metadata(app):
                 """
                 
                 try:
-                    response = model.generate_content(ai_prompt)
+                    response = client.models.generate_content(model=ai_model_name, contents=ai_prompt)
                     clean_text = response.text.replace("```json", "").replace("```", "").strip()
                     match = re.search(r'\{.*\}', clean_text, re.DOTALL)
                     

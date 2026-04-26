@@ -6,19 +6,25 @@ import { Play, Heart, Music2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const LikedSongsPage = () => {
-  const allSongs = useMusicStore((state) => state.songs);
+  const songs = useMusicStore((state) => state.songs);
   const likedSongIds = useMusicStore((state) => state.likedSongs);
   const currentSong = useMusicStore((state) => state.currentSong);
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
   const setSongs = useMusicStore((state) => state.setSongs);
   const toggleLike = useMusicStore((state) => state.toggleLike);
-  // REMOVED: fetchLikedSongs import
+  const fetchSongs = useMusicStore((state) => state.fetchSongs);
+  const fetchLikedSongs = useMusicStore((state) => state.fetchLikedSongs);
   const token = useAuthStore((state) => state.token);
+  const likedSongsLoading = useMusicStore((state) => state.likedSongsLoading);
 
-  // REMOVED: useEffect(() => { fetchLikedSongs() ... }) 
-  // We rely on the global store state now.
+  React.useEffect(() => {
+    if (token) {
+      if (songs.length === 0) fetchSongs();
+      fetchLikedSongs();
+    }
+  }, [token, fetchSongs, fetchLikedSongs, songs.length]);
 
-  const likedSongs = allSongs.filter(song => likedSongIds.includes(song.id));
+  const likedSongs = songs.filter(song => likedSongIds.includes(song.id));
 
   const handlePlaySong = (song) => {
     setSongs(likedSongs);
@@ -31,9 +37,9 @@ const LikedSongsPage = () => {
     }
   };
 
-  const handleLikeClick = (e, songId) => {
+  const handleLikeClick = (e, song) => {
     e.stopPropagation();
-    toggleLike(songId);
+    toggleLike(song);
   };
 
   const coverImage = likedSongs.length > 0 
@@ -82,7 +88,22 @@ const LikedSongsPage = () => {
           </button>
         </div>
 
-        {likedSongs.length > 0 ? (
+        {likedSongsLoading ? (
+          <div>
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={`skel-${i}`} className={`${styles.songItem} ${styles.skeleton}`}>
+                <span className={styles.index}></span>
+                <div className={styles.songLeft}>
+                  <div className={styles.skeletonCover} />
+                  <div className={styles.songInfo}>
+                    <div className={styles.skeletonTitle} />
+                    <div className={styles.skeletonArtist} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : likedSongs.length > 0 ? (
           likedSongs.map((song, index) => {
             const isActive = currentSong?.id === song.id;
             return (
@@ -93,7 +114,7 @@ const LikedSongsPage = () => {
               >
                 <span className={styles.index}>{index + 1}</span>
                 <div className={styles.songLeft}>
-                  <img src={song.cover} alt={song.title} className={styles.songCover} />
+                  <img loading="lazy" width="48" height="48" src={song.cover} alt={song.title} className={styles.songCover} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder-cover.png"; }} />
                   <div className={styles.songInfo}>
                     <h4>{song.title}</h4>
                     <p>{song.artist}</p>
@@ -102,7 +123,7 @@ const LikedSongsPage = () => {
                 <div className={styles.songRight}>
                   <button
                     className={`${styles.likeButton} ${likedSongIds.includes(song.id) ? styles.likeActive : ''}`}
-                    onClick={(e) => handleLikeClick(e, song.id)}
+                    onClick={(e) => handleLikeClick(e, song)}
                   >
                     <Heart size={16} fill={likedSongIds.includes(song.id) ? 'currentColor' : 'none'} />
                   </button>

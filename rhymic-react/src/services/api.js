@@ -34,7 +34,14 @@ export const authApi = {
   getMe: () => api.get('/user/me'),
   uploadProfilePic: (formData) => api.post('/user/upload_profile_pic', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  }),
+  forgotPassword: (email) => api.post('/forgot-password', { email }),
+  resetPassword: (email, pin, new_password) => api.post('/reset-password', { email, pin, new_password }),
+  verify2FA: (code, tempToken) => api.post('/2fa/verify', { code }, {
+    headers: { Authorization: `Bearer ${tempToken}` }
+  }),
+  setup2FA: () => api.post('/2fa/setup'),
+  enable2FA: (code) => api.post('/2fa/enable', { code })
 };
 
 export const songsApi = {
@@ -46,16 +53,35 @@ export const playlistsApi = {
   getAll: () => api.get('/playlists/'),
   getOne: (id) => api.get(`/playlists/${id}`),
   create: (name) => api.post('/playlists/', { name }),
-  addSong: (playlistId, songId) => api.post('/playlists/add_song', { playlist_id: playlistId, song_id: songId })
+  addSong: (playlistId, song) => api.post('/playlists/add_song', { playlist_id: playlistId, song }),
+  delete: (id) => api.delete(`/playlists/${id}`),
+  rename: (id, name) => api.patch(`/playlists/${id}`, { name })
 };
 
 export const likesApi = {
   getAll: () => api.get('/likes/'),
-  toggleLike: (songId) => api.post('/likes/', { song_id: songId })
+  toggleLike: (song) => api.post('/likes/', { song })
 };
 
 export const smartDjApi = {
-  recommend: (prompt) => api.post('/ai/recommend', { prompt })
+  recommend: (prompt, regenerate = false) => api.post('/ai/recommend', { prompt, regenerate })
+};
+
+export const moodApi = {
+  getSongMood: (songId, title, artist) => {
+    let url = `/mood/${songId}`;
+    if (title && artist) {
+      url += `?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
+    }
+    return api.get(url);
+  }
+};
+
+export const streamApi = {
+  search: (query) => api.get(`/stream/search?q=${encodeURIComponent(query)}`),
+  getAudioUrl: (videoId) => api.get(`/stream/audio/${videoId}`),
+  getTrending: () => api.get('/stream/trending'),
+  getRelated: (videoId) => api.get(`/stream/related/${videoId}`),
 };
 
 export default api;

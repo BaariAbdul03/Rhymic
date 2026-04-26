@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
@@ -11,29 +11,42 @@ import PlaylistDetails from './components/PlaylistDetails';
 import LikedSongs from './components/LikedSongsPage';
 import UploadMetadata from './components/UploadMetadata';
 import PremiumPlaceholder from './components/PremiumPlaceholder';
-import ArtistDetail from './components/ArtistDetail';
 import RightPanel from './components/RightPanel';
 import PageWrapper from './components/PageWrapper';
-import SmartDJ from './components/SmartDJ';
-import MobilePlayer from './components/MobilePlayer';
+import MoodOrb from './components/MoodOrb';
 
 import Login from './components/Login';
-import Profile from './components/Profile';
 import Signup from './components/Signup';
 import LandingPage from './components/LandingPage';
-import Settings from './components/Settings';
+import Skeleton from './components/Skeleton';
 import styles from './App.module.css';
 
 import { useMusicStore } from './store/musicStore';
 import { useAuthStore } from './store/authStore';
 import { useUIStore } from './store/uiStore';
 
+const OnlineSearch = lazy(() => import('./components/OnlineSearch'));
+const ArtistDetail = lazy(() => import('./components/ArtistDetail'));
+const SmartDJ = lazy(() => import('./components/SmartDJ'));
+const MobilePlayer = lazy(() => import('./components/MobilePlayer'));
+const Visualizer = lazy(() => import('./components/Visualizer'));
+const AudioLab = lazy(() => import('./components/AudioLab'));
+const Profile = lazy(() => import('./components/Profile'));
+const Settings = lazy(() => import('./components/Settings'));
+
 const AppContent = () => {
   const fetchSongs = useMusicStore((state) => state.fetchSongs);
   const fetchPlaylists = useMusicStore((state) => state.fetchPlaylists);
   const fetchLikedSongs = useMusicStore((state) => state.fetchLikedSongs);
+
+  // FIX #22: All hooks must be called unconditionally before any early returns
+  const currentSong = useMusicStore((state) => state.currentSong);
+  const queue = useMusicStore((state) => state.queue);
+  const isRightPanelOpen = useUIStore(state => state.isRightPanelOpen);
+  const isPlayerOpen = useUIStore(state => state.isPlayerOpen);
   
   const token = useAuthStore((state) => state.token);
+  const error = useMusicStore((state) => state.error);
   const location = useLocation();
 
   useEffect(() => {
@@ -64,9 +77,6 @@ const AppContent = () => {
     );
   }
 
-  const { currentSong, queue } = useMusicStore();
-  const isRightPanelOpen = useUIStore(state => state.isRightPanelOpen);
-  const isPlayerOpen = useUIStore(state => state.isPlayerOpen);
   const showRightPanel = (currentSong || queue.length > 0) && isRightPanelOpen;
 
   return (
@@ -81,15 +91,16 @@ const AppContent = () => {
               {/* Main App Routes */}
               <Route path="/" element={<PageWrapper><Home /></PageWrapper>} />
               <Route path="/discover" element={<PageWrapper><Discover /></PageWrapper>} />
+              <Route path="/explore" element={<PageWrapper><Suspense fallback={<Skeleton type="list" />}><OnlineSearch /></Suspense></PageWrapper>} />
               <Route path="/playlist/:id" element={<PageWrapper><PlaylistDetails /></PageWrapper>} />
               <Route path="/liked" element={<PageWrapper><LikedSongs /></PageWrapper>} />
-              <Route path="/artist/:name" element={<PageWrapper><ArtistDetail /></PageWrapper>} />
-              <Route path="/profile" element={<PageWrapper><Profile /></PageWrapper>} />
-              <Route path="/settings" element={<PageWrapper><Settings /></PageWrapper>} />
+              <Route path="/artist/:name" element={<PageWrapper><Suspense fallback={<Skeleton type="header" />}><ArtistDetail /></Suspense></PageWrapper>} />
+              <Route path="/profile" element={<PageWrapper><Suspense fallback={<Skeleton type="header" />}><Profile /></Suspense></PageWrapper>} />
+              <Route path="/settings" element={<PageWrapper><Suspense fallback={<Skeleton type="list" />}><Settings /></Suspense></PageWrapper>} />
               <Route path="/upload" element={<PageWrapper><UploadMetadata /></PageWrapper>} />
 
               {/* Premium Placeholders & Features */}
-              <Route path="/dj" element={<PageWrapper><SmartDJ /></PageWrapper>} />
+              <Route path="/dj" element={<PageWrapper><Suspense fallback={<Skeleton type="card" count={4} />}><SmartDJ /></Suspense></PageWrapper>} />
               <Route path="/subscribe" element={<PageWrapper><PremiumPlaceholder title="Rhymic Premium" description="Unlock high-fidelity audio, exclusive podcasts, and ad-free listening." /></PageWrapper>} />
             </Routes>
           </AnimatePresence>
@@ -102,7 +113,27 @@ const AppContent = () => {
         <ProgressBar />
       </div>
 
-      <MobilePlayer />
+      <MoodOrb />
+      <Suspense fallback={null}>
+        <AudioLab />
+        <Visualizer />
+        <MobilePlayer />
+      </Suspense>
+
+      {/* Global Error Toast */}
+      <AnimatePresence>
+        {error && (
+          <motion.div 
+            className={styles.errorToast}
+            initial={{ opacity: 0, y: 50, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 50, x: '-50%' }}
+          >
+            <div className={styles.errorIcon}>!</div>
+            <span>{error}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

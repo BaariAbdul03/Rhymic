@@ -1,37 +1,29 @@
 services:
   # ----------------------------------------
-  # Flask Backend Service
+  # Flask Backend Service (Serves SPA from /dist)
   # ----------------------------------------
   - type: web
     name: rhymic-backend
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    buildCommand: ./build.sh
+    startCommand: gunicorn app:app --workers 2 --timeout 120
+    healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
-        value: 3.10.0
-      - key: FLASK_DEBUG
-        value: "0"
+        value: 3.11.0
+      - key: FLASK_CONFIG
+        value: "production"
       - key: JWT_SECRET_KEY
         generateValue: true
-      - key: GEMINI_API_KEY
-        sync: false # You MUST provide this in the Render dashboard
-      - key: FRONTEND_URL
-        value: https://rhymic.onrender.com # Update this if using custom domain
-        
-  # ----------------------------------------
-  # React Frontend (Static Site)
-  # ----------------------------------------
-  - type: web
-    name: rhymic-frontend
-    env: static
-    rootDir: rhymic-react
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
-    envVars:
-      - key: NODE_VERSION
-        value: 20
-      - key: VITE_API_BASE_URL
-        # Render will automatically link this to your backend service URL if configured via dashboard
-        # For Blueprint auto-deploy, manually substitute this in your Render Dashboard Environment Variables once the backend provisions its URL.
-        value: https://rhymic-backend.onrender.com 
+      - key: DATABASE_URL
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false

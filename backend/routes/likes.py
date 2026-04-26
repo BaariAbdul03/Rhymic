@@ -9,9 +9,13 @@ likes_bp = Blueprint('likes', __name__)
 @jwt_required()
 def get_likes():
     """Get all liked song IDs for the current user."""
+    from backend.models.song import Song
     user_id = get_jwt_identity()
-    likes = LikedSong.query.filter_by(user_id=user_id).all()
-    return jsonify([l.song_id for l in likes])
+    
+    # Joining with Song to get the mapped ID (youtube_id for online, id for local)
+    likes_data = db.session.query(Song).join(LikedSong, LikedSong.song_id == Song.id).filter(LikedSong.user_id == user_id).order_by(LikedSong.id.desc()).all()
+    
+    return jsonify([s.youtube_id if s.source == 'online' else s.id for s in likes_data])
 
 @likes_bp.route('/', methods=['POST'])
 @jwt_required()
@@ -20,10 +24,15 @@ def toggle_like():
     user_id = get_jwt_identity()
     data = request.get_json()
     
-    if not data or 'song_id' not in data:
-        return jsonify({"message": "Missing song_id"}), 400
+    if not data or ('song_id' not in data and 'song' not in data):
+        return jsonify({"message": "Missing song or song_id"}), 400
         
-    sid = data.get('song_id')
+    if 'song' in data and data['song'].get('source') == 'online':
+        from backend.models.song import Song
+        sid = Song.ensure_online_song(data['song'])
+    else:
+        sid = data.get('song_id') or data.get('song', {}).get('id')
+        
     existing = LikedSong.query.filter_by(user_id=user_id, song_id=sid).first()
     
     try:

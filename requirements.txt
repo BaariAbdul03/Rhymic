@@ -6,8 +6,14 @@ Flask-Migrate
 Flask-Bcrypt
 Flask-JWT-Extended
 Flask-Limiter
-google-generativeai
+google-genai
 python-dotenv
 email_validator
 requests
 psycopg2-binary
+ytmusicapi
+yt-dlp
+pyotp
+qrcode
+supabase
+loguru

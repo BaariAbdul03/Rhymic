@@ -1,14 +1,145 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Shield, ShieldCheck, ShieldAlert, Key } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
 
 const Settings = () => {
+  const { user, setup2FA, enable2FA } = useAuthStore();
+  const [setupData, setSetupData] = useState(null); // { secret, qr_code }
+  const [code, setCode] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSetup = async () => {
+    setLoading(true);
+    setError(null);
+    const data = await setup2FA();
+    if (data) {
+      setSetupData(data);
+    } else {
+      setError("Failed to initiate 2FA setup");
+    }
+    setLoading(false);
+  };
+
+  const handleVerify = async () => {
+    setLoading(true);
+    setError(null);
+    const success = await enable2FA(code);
+    if (!success) {
+      setError("Invalid 6-digit code. Try again.");
+    } else {
+      setSetupData(null);
+      setCode('');
+    }
+    setLoading(false);
+  };
+
+  if (!user) return null;
+
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto' }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '8px' }}>Settings</h1>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>Manage your account and preferences.</p>
+    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', color: 'var(--text-primary)' }}>
+      <h1 style={{ fontSize: '2.5rem', marginBottom: '8px', fontWeight: 'bold' }}>Settings</h1>
+      <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>Manage your account security and preferences.</p>
       
-      <div style={{ backgroundColor: 'var(--bg-elevated)', padding: '24px', borderRadius: '12px', marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '1.2rem', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>Account</h2>
-        <p style={{ color: 'var(--text-secondary)' }}>Account settings are currently being integrated with the new backend. Check back soon.</p>
+      <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '32px', borderRadius: '16px', marginBottom: '24px', border: '1px solid var(--border-color)', boxShadow: 'var(--card-shadow)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
+          <Shield size={24} color="var(--accent-primary)" />
+          <h2 style={{ fontSize: '1.4rem', margin: 0 }}>Security</h2>
+        </div>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ fontSize: '1.1rem', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Two-Factor Authentication (2FA)
+              {user.is_two_factor_enabled ? <ShieldCheck size={18} color="#4cd964" /> : <ShieldAlert size={18} color="#ff9500" />}
+            </h3>
+            <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem', maxWidth: '400px' }}>
+              {user.is_two_factor_enabled 
+                ? "Your account is protected. You will be required to enter a 6-digit code when logging in."
+                : "Add an extra layer of security to your account by using an authenticator app like Google Authenticator."}
+            </p>
+          </div>
+          
+          {!user.is_two_factor_enabled && !setupData && (
+            <button 
+              onClick={handleSetup}
+              disabled={loading}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '8px',
+                border: 'none',
+                backgroundColor: 'var(--accent-primary)',
+                color: '#000',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                opacity: loading ? 0.7 : 1
+              }}
+            >
+              Enable 2FA
+            </button>
+          )}
+
+          {user.is_two_factor_enabled && (
+            <div style={{ color: '#4cd964', fontWeight: 'bold', border: '1px solid #4cd964', padding: '8px 16px', borderRadius: '8px', backgroundColor: 'rgba(76,217,100,0.1)' }}>
+              Enabled
+            </div>
+          )}
+        </div>
+
+        {setupData && !user.is_two_factor_enabled && (
+          <div style={{ marginTop: '24px', padding: '24px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--accent-primary)' }}>
+            <h4 style={{ margin: '0 0 16px 0', color: 'var(--accent-primary)' }}>Setup Instructions</h4>
+            <ol style={{ paddingLeft: '20px', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>
+              <li>Download Google Authenticator or Authy on your mobile device.</li>
+              <li>Scan the QR code below or enter the setup key manually.</li>
+              <li>Enter the 6-digit code generated by the app to verify.</li>
+            </ol>
+            
+            <div style={{ display: 'flex', gap: '32px', alignItems: 'center', marginTop: '24px' }}>
+              <div style={{ background: '#fff', padding: '16px', borderRadius: '12px' }}>
+                <img src={setupData.qr_code} alt="2FA QR Code" width={150} height={150} style={{ display: 'block' }} />
+              </div>
+              
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: '0 0 8px 0', fontSize: '0.8.5rem', color: 'var(--text-secondary)' }}>Setup Key: <strong>{setupData.secret}</strong></p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Key size={18} color="var(--text-secondary)" />
+                  <input 
+                    type="text" 
+                    placeholder="Enter 6-digit code" 
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'var(--bg-elevated)',
+                      color: 'var(--text-primary)',
+                      flex: 1
+                    }}
+                  />
+                  <button 
+                    onClick={handleVerify}
+                    disabled={code.length !== 6 || loading}
+                    style={{
+                      padding: '10px 24px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      backgroundColor: 'white',
+                      color: 'black',
+                      fontWeight: 'bold',
+                      cursor: code.length === 6 ? 'pointer' : 'not-allowed',
+                      opacity: code.length === 6 ? 1 : 0.5
+                    }}
+                  >
+                    Verify
+                  </button>
+                </div>
+                {error && <p style={{ color: '#ff4d4d', fontSize: '0.85rem', margin: '8px 0 0 0' }}>{error}</p>}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

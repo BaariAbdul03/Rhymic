@@ -1,47 +1,72 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
+import toast from 'react-hot-toast';
+import SongCover from './SongCover';
 import styles from './CategoryRow.module.css';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08
+    }
+  }
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, scale: 0.95, y: 10 },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } }
+};
 
 const CategoryRow = ({ playlist }) => {
   const scrollRef = useRef(null);
   
-  // Need to fetch songs for this playlist if not already loaded in a real app.
-  // We'll mimic this behavior using all songs for now, to keep the UI populated.
   const songs = useMusicStore((state) => state.songs);
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
   const playNext = useMusicStore((state) => state.playNext);
-
-  if (!songs || songs.length === 0) return null;
-
   const aiCategories = useMusicStore(state => state.aiCategories);
 
-  let rowSongs = [];
+  // Memoize the filtering logic to prevent expensive re-calculations on every render
+  const rowSongs = useMemo(() => {
+    if (!songs || songs.length === 0) return [];
 
-  // 1. Try AI Categorization (Gold Standard)
-  if (aiCategories && aiCategories[playlist.name]) {
-    const aiMappedIds = aiCategories[playlist.name];
-    rowSongs = aiMappedIds.map(id => songs.find(s => s.id === id)).filter(Boolean);
-  } 
-  // 2. Try strict metadata matching fallback
-  else if (playlist.songs && playlist.songs.length > 0) {
-    rowSongs = playlist.songs;
-  } else {
-    rowSongs = songs.filter(s => 
-      s.src?.toLowerCase().includes(playlist.name.toLowerCase()) || 
-      s.genre?.toLowerCase().includes(playlist.name.toLowerCase()) || 
-      s.artist?.toLowerCase().includes(playlist.name.toLowerCase())
-    );
-  }
+    let filtered = [];
+    
+    // 1. Try AI Categorization (Gold Standard)
+    if (aiCategories && aiCategories[playlist.name]) {
+      const aiMappedIds = aiCategories[playlist.name];
+      filtered = aiMappedIds.map(id => songs.find(s => s.id === id)).filter(Boolean);
+    } 
+    // 2. Try strict metadata matching fallback
+    else if (playlist.songs && playlist.songs.length > 0) {
+      filtered = playlist.songs;
+    } else {
+      filtered = songs.filter(s => {
+        const cat = playlist.name.toLowerCase();
+        const isInPath = s.src?.toLowerCase().includes(cat);
+        const isInTitle = s.title?.toLowerCase().includes(cat);
+        const isInArtist = s.artist?.toLowerCase().includes(cat);
+        const isInGenre = s.genre?.toLowerCase().includes(cat);
+        
+        // Match if category is in path (local) OR if it matches metadata keywords (online/local)
+        return isInPath || isInTitle || isInArtist || isInGenre;
+      });
+    }
 
-  // Fallback to a deterministic random mix if the explicit filter returns empty,
-  // preventing the UI from looking broken while keeping rows uniquely distributed.
-  if (!rowSongs || rowSongs.length === 0) {
-     const startIndex = (playlist.id * 3) % songs.length;
-     rowSongs = [...songs.slice(startIndex), ...songs.slice(0, startIndex)].slice(0, 10);
-  } else {
-     rowSongs = rowSongs.slice(0, 10);
-  }
+    // If still empty, return empty array to avoid showing unrelated songs
+    if (!filtered || filtered.length === 0) {
+       filtered = [];
+    } else {
+       filtered = filtered.slice(0, 10);
+    }
+    
+    return filtered;
+  }, [songs, aiCategories, playlist.id, playlist.name, playlist.songs]);
+
+  if (!songs || songs.length === 0 || rowSongs.length === 0) return null;
 
   const scrollLeft = () => {
     if (scrollRef.current) scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
@@ -71,11 +96,24 @@ const CategoryRow = ({ playlist }) => {
       </div>
 
       <div className={styles.scrollWrapper}>
-        <div className={styles.scrollContainer} ref={scrollRef}>
+        <motion.div 
+          className={styles.scrollContainer} 
+          ref={scrollRef}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          viewport={{ once: true, amount: 0.1 }}
+        >
           {rowSongs.map((song) => (
-            <div key={song.id} className={styles.card} onClick={() => playNext(song)}>
+            <motion.div 
+              variants={cardVariants}
+              key={song.id} 
+              className={styles.card} 
+              onClick={() => playNext(song)}
+              whileHover={{ y: -8, scale: 1.02 }}
+            >
               <div className={styles.coverContainer}>
-                <img src={song.cover} alt={song.title} className={styles.cover} />
+                <SongCover src={song.cover} alt={song.title} />
                 <div className={styles.playOverlay}>
                   <button 
                     className={styles.playBtn}
@@ -87,9 +125,9 @@ const CategoryRow = ({ playlist }) => {
               </div>
               <h3 className={styles.songTitle}>{song.title}</h3>
               <p className={styles.songArtist}>{song.artist}</p>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </div>
   );

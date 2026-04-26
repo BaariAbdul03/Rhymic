@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import styles from './PlaylistPage.module.css';
 import { useMusicStore } from '../store/musicStore';
-import { Play, Heart, Music2 } from 'lucide-react';
+import { Play, Heart, Music2, Trash2, Edit3, Check, X } from 'lucide-react';
 import ContextMenu from './ContextMenu';
+import SongCover from './SongCover';
 
 const PlaylistDetails = () => {
   const { id } = useParams();
@@ -19,14 +20,20 @@ const PlaylistDetails = () => {
   
   // --- NEW: Get setQueue to update the queue ---
   const setQueue = useMusicStore((state) => state.setQueue);
+  const deletePlaylist = useMusicStore((state) => state.deletePlaylist);
+  const renamePlaylist = useMusicStore((state) => state.renamePlaylist);
+  
+  const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
 
   useEffect(() => {
     if (id) fetchPlaylistDetails(id);
   }, [id, fetchPlaylistDetails]);
 
-  const handleLikeClick = (e, songId) => {
+  const handleLikeClick = (e, song) => {
     e.stopPropagation();
-    toggleLike(songId);
+    toggleLike(song);
   };
 
   const handleContextMenu = (e, song) => {
@@ -52,6 +59,21 @@ const PlaylistDetails = () => {
     setCurrentSong(song);
   };
 
+  const handleDelete = async () => {
+    if (window.confirm("Are you sure you want to delete this playlist?")) {
+      await deletePlaylist(currentPlaylist.id);
+      navigate('/');
+    }
+  };
+
+  const handleRenameSubmit = async (e) => {
+    e.preventDefault();
+    if (editName.trim() && editName.trim() !== currentPlaylist.name) {
+      await renamePlaylist(currentPlaylist.id, editName.trim());
+    }
+    setIsEditing(false);
+  };
+
   if (!currentPlaylist) return <div className={styles.loading}>Loading...</div>;
 
   const songCount = currentPlaylist.songs.length;
@@ -69,11 +91,42 @@ const PlaylistDetails = () => {
             style={{ backgroundImage: `url(${coverImage})` }}
         ></div>
         
-        <img src={coverImage} alt={currentPlaylist.name} className={styles.headerImage} />
+        <SongCover src={coverImage} alt={currentPlaylist.name} size="large" className={styles.headerImage} />
         
         <div className={styles.headerContent}>
-          <span className={styles.type}>Public Playlist</span>
-          <h1 className={styles.title}>{currentPlaylist.name}</h1>
+          <span className={styles.type}>
+            {currentPlaylist.is_system ? "System Playlist" : "Public Playlist"}
+          </span>
+          
+          <div className={styles.titleRow}>
+            {isEditing ? (
+              <form onSubmit={handleRenameSubmit} className={styles.renameForm}>
+                <input 
+                  type="text" 
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className={styles.renameInput}
+                  autoFocus
+                />
+                <button type="submit" className={styles.renameBtn}><Check size={20}/></button>
+                <button type="button" onClick={() => setIsEditing(false)} className={styles.renameBtn}><X size={20}/></button>
+              </form>
+            ) : (
+              <h1 className={styles.title}>{currentPlaylist.name}</h1>
+            )}
+            
+            {!currentPlaylist.is_system && !isEditing && (
+              <div className={styles.playlistActions}>
+                <button onClick={() => { setIsEditing(true); setEditName(currentPlaylist.name); }} className={styles.actionBtn}>
+                  <Edit3 size={20} />
+                </button>
+                <button onClick={handleDelete} className={`${styles.actionBtn} ${styles.dangerBtn}`}>
+                  <Trash2 size={20} />
+                </button>
+              </div>
+            )}
+          </div>
+          
           <div className={styles.meta}>
             <span className={styles.metaItem}>
               <Music2 size={16} /> {songCount} Songs
@@ -102,7 +155,7 @@ const PlaylistDetails = () => {
             >
               <span className={styles.index}>{index + 1}</span>
               <div className={styles.songLeft}>
-                <img src={song.cover} alt={song.title} className={styles.songCover} />
+                <SongCover src={song.cover} alt={song.title} size="small" className={styles.songCover} />
                 <div className={styles.songInfo}>
                   <h4>{song.title}</h4>
                   <p>{song.artist}</p>
@@ -111,7 +164,7 @@ const PlaylistDetails = () => {
               <div className={styles.songRight}>
                 <button
                   className={`${styles.likeButton} ${isLiked ? styles.likeActive : ''}`}
-                  onClick={(e) => handleLikeClick(e, song.id)}
+                  onClick={(e) => handleLikeClick(e, song)}
                 >
                   <Heart size={16} fill={isLiked ? 'currentColor' : 'none'} />
                 </button>

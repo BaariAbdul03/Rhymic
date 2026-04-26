@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import styles from './Home.module.css';
 import Hero from './Hero';
 import TopSongs from './TopSongs';
-import CategoryRow from './CategoryRow';
 import { useMusicStore } from '../store/musicStore';
 
 const Home = () => {

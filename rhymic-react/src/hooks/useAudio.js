@@ -1,9 +1,13 @@
 // src/hooks/useAudio.js
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useMusicStore } from '../store/musicStore';
 
 export const useAudio = () => {
-  const audio = useMemo(() => new Audio(), []);
+  const audio = useMemo(() => {
+    const a = new Audio();
+    a.crossOrigin = "anonymous";
+    return a;
+  }, []);
 
   // Get state and actions
   const currentSong = useMusicStore((state) => state.currentSong);
@@ -25,7 +29,13 @@ export const useAudio = () => {
   // Effect 2: Load a new song
   useEffect(() => {
     if (currentSong) {
-      audio.src = currentSong.src;
+      // If the song is an online track, route it through the Flask proxy to bypass CORS
+      // which would otherwise taint the Canvas Visualizer.
+      const trackSrc = currentSong.source === 'online' 
+        ? `/api/stream/proxy/${currentSong.id}` 
+        : currentSong.src;
+        
+      audio.src = trackSrc;
       // Set volume one time on load from the store's state
       audio.volume = useMusicStore.getState().volume;
       audio.load();
@@ -66,31 +76,69 @@ export const useAudio = () => {
     audio.volume = volume;
   }, [volume, audio]);
 
-  // Effect 4: Attach audio event listeners
+  // Ref to prevent double-firing the smart fade
+  const hasTriggeredEndRef = useRef(false);
+
+  // Reset trigger on new song
+  useEffect(() => {
+    hasTriggeredEndRef.current = false;
+  }, [currentSong]);
+
+  // Effect 5: Attach audio event listeners
   useEffect(() => {
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
+
+      // Smart Pre-fade (Phase 5): Trigger the nextSong fade sequence 400ms before
+      // the actual track officially ends on the DOM element.
+      // This allows the mathematical hardware fade to execute seamlessly instead
+      // of crashing abruptly at EOF.
+      if (audio.duration && audio.currentTime > 0) {
+        if (audio.duration - audio.currentTime <= 0.4 && !hasTriggeredEndRef.current) {
+          const { nextSong, repeat } = useMusicStore.getState();
+          if (!repeat) {
+            hasTriggeredEndRef.current = true;
+            nextSong();
+          }
+        }
+      }
     };
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
     };
+    // The native ended event is now a fallback in case timeupdate misses the 400ms window
     const handleEnded = () => {
-      const { nextSong, repeat } = useMusicStore.getState();
-      if (!repeat) { // Only go to next song if repeat is off
-        nextSong();
+      if (!hasTriggeredEndRef.current) {
+        const { nextSong, repeat } = useMusicStore.getState();
+        if (!repeat) {
+          hasTriggeredEndRef.current = true;
+          nextSong();
+        }
       }
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('ended', handleEnded);
+    const handlePlaybackError = () => {
+      const { handlePlaybackError: storeErrorHandler, currentSong } = useMusicStore.getState();
+      if (currentSong) {
+        storeErrorHandler(`Failed to stream "${currentSong.title}". Skipping...`);
+      }
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handlePlaybackError);
 
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handlePlaybackError);
     };
-  }, [audio, setCurrentTime, setDuration, setIsPlaying]);
+  }, [audio, setCurrentTime, setDuration]); // setIsPlaying removed — not called in this effect
 
   return {}; // No return needed
 };

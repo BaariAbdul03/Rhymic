@@ -15,20 +15,37 @@
   margin-bottom: 8px;
 }
 
+.tableBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .tableRow {
   display: flex;
   align-items: center;
   padding: 8px 16px;
   border-radius: 8px;
-  transition: background-color 0.2s;
+  transition: all 0.3s var(--transition-spring);
+  background-color: transparent;
+  border: 1px solid transparent;
 }
 
 .tableRow:hover {
-  background-color: var(--glass-hover);
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-color: var(--glass-border);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  transform: translateX(4px);
 }
 
 .tableRow.activeRow {
-  background-color: var(--glass-hover);  
+  background-color: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-color: rgba(200, 164, 78, 0.3);
+  box-shadow: 0 4px 15px rgba(200, 164, 78, 0.1);
 }
 
 /* Columns */
@@ -51,12 +68,6 @@
   min-width: 0;
 }
 
-.colPlays {
-  width: 150px;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  font-variant-numeric: tabular-nums;
-}
 
 .colTime {
   width: 80px;
@@ -78,6 +89,30 @@
   opacity: 1;
 }
 
+/* Animated Equalizer */
+.equalizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+
+.equalizer .bar {
+  width: 3px;
+  background-color: var(--accent-primary);
+  border-radius: 1px;
+  animation: eq-bounce 1s infinite alternate ease-in-out;
+}
+
+.equalizer .bar:nth-child(1) { height: 60%; animation-delay: 0.1s; }
+.equalizer .bar:nth-child(2) { height: 100%; animation-delay: 0.3s; }
+.equalizer .bar:nth-child(3) { height: 40%; animation-delay: 0.5s; }
+
+@keyframes eq-bounce {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
 /* Overlays */
 .playOverlay {
   display: none;
@@ -92,22 +127,18 @@
   display: block;
 }
 
-.tableRow:hover .indexNumber {
+.tableRow:hover .indexNumber,
+.tableRow:hover .equalizer {
   display: none;
-}
-
-.playingGif {
-  width: 16px;
-  height: 16px;
-  object-fit: cover;
 }
 
 /* Song Info */
 .songCover {
   width: 40px;
   height: 40px;
-  border-radius: 4px;
+  border-radius: 6px;
   object-fit: cover;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
 .songInfo {
@@ -120,7 +151,7 @@
 .songName {
   margin: 0 0 2px 0;
   color: var(--text-primary);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 0.95rem;
   white-space: nowrap;
   overflow: hidden;
@@ -138,6 +169,11 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.2s;
+}
+.artistName:hover {
+  text-decoration: underline;
+  color: var(--text-primary);
 }
 
 /* Actions */
@@ -150,11 +186,12 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: color 0.2s;
+  transition: all 0.2s;
 }
 
 .actionBtn:hover {
   color: var(--text-primary);
+  transform: scale(1.1);
 }
 
 @media (max-width: 768px) {

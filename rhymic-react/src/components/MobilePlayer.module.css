@@ -11,20 +11,26 @@
 
 .overlayBackground {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
+  top: -10%; left: -10%; right: -10%; bottom: -10%;
   background-size: cover;
   background-position: center;
-  filter: blur(60px) saturate(250%) brightness(0.8);
-  transform: scale(1.1);
+  filter: blur(80px) saturate(200%) brightness(0.6);
   z-index: 0;
+  transition: background-image 0.5s ease;
 }
 
-.overlayBackground::after {
-  content: '';
+@keyframes slowColorShift {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(10px) scale(1.05); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+.animatedGradientOverlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.5) 100%),
-              linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.85) 100%);
+  background: radial-gradient(circle at 50% 30%, rgba(200, 164, 78, 0.2) 0%, transparent 60%),
+              linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.9) 100%);
+  animation: slowColorShift 15s ease-in-out infinite;
 }
 
 .contentWrapper {
@@ -45,17 +51,26 @@
 }
 
 .iconBtn {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  width: 40px;
-  height: 40px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   color: var(--text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  transition: all 0.3s var(--transition-spring);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+
+.iconBtn:hover {
+  background: var(--glass-hover);
+  border-color: var(--glass-border-glow);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
 }
 
 .brand {
@@ -71,15 +86,22 @@
   align-items: center;
   justify-content: center;
   margin-bottom: 32px;
+  perspective: 1000px;
+}
+
+.perspectiveWrapper {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1/1;
+  transform-style: preserve-3d;
 }
 
 .coverImage {
   width: 100%;
-  max-width: 320px;
-  aspect-ratio: 1/1;
-  border-radius: 12px;
+  height: 100%;
+  border-radius: 16px;
   object-fit: cover;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 40px var(--accent-glow);
 }
 
 /* Info */
@@ -89,26 +111,28 @@
 }
 
 .title {
-  font-size: 1.8rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 800;
   margin: 0 0 8px 0;
   line-height: 1.2;
+  letter-spacing: -0.5px;
 }
 
 .artist {
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   color: rgba(255,255,255,0.7);
   margin: 0;
+  font-weight: 500;
 }
 
 /* Scrubber */
 .scrubberSection {
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .sliderContainer {
   position: relative;
-  height: 20px;
+  height: 24px;
   display: flex;
   align-items: center;
 }
@@ -117,11 +141,18 @@
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 3px;
+  height: 8px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  border-radius: 4px;
   outline: none;
   position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: height 0.2s;
+}
+
+.sliderContainer:hover .slider {
+  height: 10px;
 }
 
 .slider::before {
@@ -130,32 +161,55 @@
   top: 0;
   left: 0;
   height: 100%;
-  background: white;
-  border-radius: 3px;
+  background: var(--accent-primary);
+  border-radius: 4px;
   width: var(--progress-width, 0%);
   pointer-events: none;
+  box-shadow: 0 0 10px var(--accent-glow);
 }
 
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   background: white;
   cursor: pointer;
   position: relative;
   z-index: 2;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3), 0 0 0 4px rgba(255, 255, 255, 0.1);
+  transition: all 0.2s var(--transition-spring);
+}
+
+.sliderContainer:hover .slider::-webkit-slider-thumb {
+  transform: scale(1.2);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5), 0 0 0 6px var(--glass-border-glow);
+}
+
+@keyframes pulsePulsingMobile {
+  0% { box-shadow: 0 0 0 0 rgba(200, 164, 78, 0.5); }
+  70% { box-shadow: 0 0 0 15px rgba(200, 164, 78, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(200, 164, 78, 0); }
+}
+
+.sliderContainer:active .slider::-webkit-slider-thumb {
+  animation: pulsePulsingMobile 1s infinite;
+  transform: scale(1.4);
 }
 
 .timeContainer {
   display: flex;
   justify-content: space-between;
-  margin-top: 8px;
-  font-size: 0.8rem;
+  margin-top: 12px;
+}
+
+.timeText {
+  font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.6);
   font-variant-numeric: tabular-nums;
+  font-family: 'Inter', monospace;
+  font-weight: 500;
 }
 
 /* Transport Controls */
@@ -173,28 +227,35 @@
 .transportBtn {
   background: none;
   border: none;
-  color: white;
+  color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: color 0.2s;
+}
+
+.transportBtn:hover {
+  color: white;
 }
 
 .transportBtn.active {
   color: var(--accent-primary);
+  filter: drop-shadow(0 0 5px var(--accent-glow));
 }
 
 .playBtn {
-  width: 72px;
-  height: 72px;
-  background-color: white;
-  color: black;
+  width: 80px;
+  height: 80px;
+  background-color: var(--accent-primary);
+  color: var(--accent-text);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   border: none;
   cursor: pointer;
+  box-shadow: 0 8px 25px var(--accent-glow);
 }
 
 .playIconFix {

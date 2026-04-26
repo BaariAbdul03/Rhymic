@@ -10,6 +10,7 @@ Rhymic is a full-stack, enterprise-grade music streaming platform designed to mi
 ### **Frontend**
 - **Framework:** React 19 + Vite
 - **State Management:** Zustand (`musicStore`, `uiStore`, `authStore`)
+- **Audio Engine:** Native Web Audio API (`AudioContext`, `AnalyserNode`, `BiquadFilterNodes`) orchestrating global FX and feeding Canvas 2D render loops.
 - **Styling:** Vanilla CSS Modules (`.module.css`) extensively utilizing CSS variables (`var(--accent-primary)`, etc.). *Note: We intentionally avoid Tailwind for complex UI overlays to maintain absolute pixel control.*
 - **Animations:** `framer-motion` (used heavily in page transitions and Mobile Player overlays).
 - **Icons:** `lucide-react`
@@ -18,7 +19,7 @@ Rhymic is a full-stack, enterprise-grade music streaming platform designed to mi
 ### **Backend**
 - **Framework:** Python Flask (structured using Blueprints for `routes/`)
 - **Database:** SQLite (managed via SQLAlchemy and Flask-Migrate `alembic`)
-- **Authentication:** JWT (JSON Web Tokens)
+- **Authentication:** JWT (JSON Web Tokens), TOTP-based Two-Factor Authentication (2FA), and secure code-based password recovery.
 - **AI Integrations:** Gemini 2.5 Flash API directly interfacing with Python via `google.generativeai`.
 
 ---
@@ -28,6 +29,7 @@ The core of the React application's logic is cleanly separated from the DOM and 
 
 1. **`musicStore.js`**: The beating heart of the application. 
    - Manages the `queue` array, `currentSong` object, `isPlaying` boolean, and the global audio lifecycle hooks (`duration`, `currentTime`, `volume`).
+   - Houses the Web Audio tracking state including the `analyserNode`, 10-band `eqBands`, and FX variables.
    - Handles the absolute logic for fetching from the backend API (`fetchSongs`, `fetchPlaylists`).
    - Caches backend AI generations (e.g., `aiCategories`) to prevent infinite UI re-rendering.
 2. **`uiStore.js`**: Strictly manages UI boolean toggles for absolute/fixed layers (e.g., `isSidebarOpen`, `isRightPanelOpen` (Queue drawer), `isPlayerOpen` (Mobile Player)).
@@ -46,6 +48,7 @@ If you are modifying components, please respect the established `z-index` and La
 - `15000`: `<RightPanel className={styles.desktopOverlay} />` (The queue drawer which must slide securely over *everything*, including the Mobile Player).
 
 ### Key Component Relationships:
+- **`useAudioEngine.js` & `useVisualizer.js`**: The central audio processing nervous system. `useAudioEngine` intercepts the raw HTML `<audio>` elements, feeding it through an array of filter nodes (EQ, Bass) before broadcasting an `AnalyserNode` to the store. `useVisualizer` then consumes that analyzer blindly and paints its data to a Canvas element.
 - **`App.jsx`**: The root layout container mapping structural boundaries. Uses React Router `AnimatePresence` for smooth `<PageWrapper>` transitions.
 - **`ProgressBar.jsx`**: The persistent bottom player. Houses the global `<Audio>` HTML5 hook execution logic.
 - **`RightPanel.jsx`**: A complex contextual drawer handling the Queue. On desktop, it's a native grid column, but dynamically transforms into a `.desktopOverlay` (z-index 15000) when overlapping the fullscreen player.
@@ -66,7 +69,23 @@ When working on the application, please be aware of these foundational structura
 2. **CSS `url()` Background Crashing:** When dynamically interpolating album covers into CSS (e.g., in `MobilePlayer.jsx`), always wrap the interpolation in double quotes `url("{var}")`. Local file structures contain blank spaces (e.g., `Alan Walker - Faded.mp3`) which natively crashes CSS string parsing if left unquoted.
 3. **Category Deduplication Errors:** The `musicStore` logic has explicit duplicate-verification mechanisms when triggering `playNext()` or "Add to Queue". Do not mutate the queue array blindly without `findIndex()` safety nets.
 4. **AI Blocking State:** The frontend `Discover.jsx` fetches the `aiCategories` purely in the background via Zustand, immediately reverting to visual fallback arrays. Do not attach `isAiLoading` blocking spinners to the main DOM thread.
+5. **Web Audio Graph Disconnects (Phase 4):** Never recreate the `AudioContext` or `MediaElementSourceNode` dynamically inside render components. It is securely created as a singleton in `useAudioEngine.js`. Rebinding or dropping graph connections causes silent playback or extreme volume spikes.
+6. **Canvas Retinal Scaling (Phase 3):** To support high-DPI mobile screens, `Visualizer.jsx` scales its drawing buffer by `devicePixelRatio`. However, when calculating absolute coordinates during drawing algorithms in `useVisualizer.js` (e.g. `centerX`), you MUST explicitly divide the hardware canvas properties by the active `DPR` or use `<canvas>.clientWidth`, otherwise the elements will be drawn violently off-screen.
+7. **Image Proxy Stability (Phase 21):** To prevent CDN flagging and 403 errors, the backend proxy (`/api/stream/thumbnail`) now spoofes browser headers (including `Referer: https://music.youtube.com/`). It also implements an automatic resolution fallback—if a high-res (`=s0`) fetch fails, it retries with the original thumbnail URL before failing. 
+8. **Frontend Circuit Breaker (Phase 21):** `SongCover.jsx` has a built-in circuit breaker. If the backend proxy fails (e.g., server IP is blocked), the component automatically extracts the `fallback` parameter from the proxy URL and attempts a direct client-side load.
+9. **Persistent Thumbnail Cache (Phase 21):** Backend `cache_service.py` implements atomic disk writes (write-to-tmp then rename) to prevent corrupted image cache entries.
+10. **Resizable Queue UI (Phase 21):** `RightPanel.jsx` is resizable on Desktop. It calculates width via `window.innerWidth - e.clientX` and persists the user preference in `localStorage.queueWidth`. The resize handle uses `z-index: 20000` to remain interactable above all overlays.
+11. **Multi-Step Auth UI & 2FA (Phase 22):** The authentication flow is a multi-step UI supporting login, registration, TOTP 2FA verification, and a "Forgot Password" code-based recovery mechanism. Do not revert to the single-page basic auth form.
+12. **Smart DJ Fallback (Phase 22):** The AI-driven mood engine has been replaced with a high-performance rotational color cycle for better reliability. The Smart DJ interface explicitly uses the `<SongCover />` component to resolve image loading failures.
+13. **Local Database & Clean State (Phase 22):** External streaming data has been purged. The database relies strictly on local metadata and direct YouTube Music integrations. Do not reintroduce stale configurations or orphaned components.
 
 ---
 
-*This document was generated automatically post-Phase 20 overhaul to ensure seamless integration for subsequent AI engineers executing contextual commands over the Rhymic project matrix.*
+## 🚀 6. Performance & UX Standards
+- **Golden Placeholders:** All images MUST use the `<SongCover />` component. This ensures the "Liquid Gold" animated fallback is visible during the loading phase (`!loaded`), preventing black-box layout shifts.
+- **Atomic Caching:** Never write direct to cache files; use `ThumbnailCache.save_to_cache` to ensure atomic operations.
+- **Resize Constraints:** The Queue panel resize is constrained between `300px` and `600px` for layout stability.
+
+---
+
+*This document was generated automatically post-Phase 22 overhaul to ensure seamless integration for subsequent AI engineers executing contextual commands over the Rhymic project matrix.*

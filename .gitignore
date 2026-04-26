@@ -29,6 +29,8 @@ yarn-debug.log*
 yarn-error.log*
 .gemini/
 tmp/
+brain/
+backend/data/cache/
 
 # App Specific
 # User uploads (these shouldn't be in Git if using cloud storage later)

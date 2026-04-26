@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Play, Heart, Users, Share2, ChevronLeft } from 'lucide-react';
+import { Play, Heart, Share2, ChevronLeft } from 'lucide-react';
 import { useMusicStore } from '../store/musicStore';
+import SongCover from './SongCover';
 import api from '../services/api';
-import TopSongs from './TopSongs';
 import styles from './ArtistDetail.module.css';
 
 const ArtistDetail = () => {
@@ -15,32 +15,48 @@ const ArtistDetail = () => {
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
   
   const [artistImage, setArtistImage] = useState(null);
+  const [similarArtists, setSimilarArtists] = useState([]);
   const [loading, setLoading] = useState(true);
+  const fetchedRef = useRef(false);
 
   const artistSongs = songs.filter(song => song.artist === decodedName);
   
   useEffect(() => {
-    const fetchArtistImage = async () => {
+    // Prevent re-fetching on every render
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+
+    const fetchArtistProfile = async () => {
       setLoading(true);
       try {
-        // Find existing image from a song or fetch from API
-        const songWithImage = artistSongs.find(s => s.cover);
-        if (songWithImage) {
-          setArtistImage(songWithImage.cover); // Fallback for now
+        // Use the new local-only artist profile endpoint
+        const response = await api.get(`/artists/${encodeURIComponent(decodedName)}/profile`);
+        const data = response.data;
+        
+        if (data.image && data.image !== '/assets/default_cover.jpg') {
+          setArtistImage(data.image);
+        } else {
+          // Fallback to first song's cover
+          const songWithImage = artistSongs.find(s => s.cover);
+          if (songWithImage) setArtistImage(songWithImage.cover);
         }
         
-        // In a real scenario, we'd have a specific endpoint for artist details
-        // const response = await api.get(`/artists/${encodeURIComponent(decodedName)}`);
+        if (data.similar && data.similar.length > 0) {
+          setSimilarArtists(data.similar);
+        }
       } catch (error) {
         console.error("Failed to fetch artist details", error);
+        // Fallback to song cover
+        const songWithImage = artistSongs.find(s => s.cover);
+        if (songWithImage) setArtistImage(songWithImage.cover);
       } finally {
         setLoading(false);
       }
     };
     
-    fetchArtistImage();
+    fetchArtistProfile();
     window.scrollTo(0, 0);
-  }, [decodedName, artistSongs]);
+  }, [decodedName]);
 
   if (!artistSongs.length && !loading) {
     return (
@@ -53,6 +69,7 @@ const ArtistDetail = () => {
 
   const handlePlayArtist = () => {
     if (artistSongs.length > 0) {
+      useMusicStore.getState().setQueue(artistSongs);
       setCurrentSong(artistSongs[0]);
     }
   };
@@ -61,7 +78,7 @@ const ArtistDetail = () => {
     <div className={styles.artistContainer}>
       <div 
         className={styles.heroSection}
-        style={{ backgroundImage: `url(${artistImage || '/assets/default_artist.jpg'})` }}
+        style={{ backgroundImage: `url("${artistImage || '/assets/default_cover.jpg'}")` }}
       >
         <div className={styles.heroOverlay}></div>
         <button className={styles.navBack} onClick={() => navigate(-1)}>
@@ -73,7 +90,9 @@ const ArtistDetail = () => {
             ✓ Verified Artist
           </div>
           <h1 className={styles.artistName}>{decodedName}</h1>
-          <p className={styles.monthlyListeners}>{(artistSongs.length * 1250000).toLocaleString()} Monthly Listeners</p>
+          <p className={styles.monthlyListeners}>
+            {artistSongs.length} {artistSongs.length === 1 ? 'Song' : 'Songs'} in Library
+          </p>
           
           <div className={styles.actionRow}>
             <button className={styles.playBtn} onClick={handlePlayArtist}>
@@ -89,18 +108,18 @@ const ArtistDetail = () => {
       <div className={styles.contentSection}>
         <div className={styles.mainColumn}>
           <h2 className={styles.sectionTitle}>Popular</h2>
-          {/* Reusing TopSongs component but passing filtered songs via props if it supported it.
-              Since TopSongs uses store directly, we'll build a mini table here or refactor TopSongs.
-              For speed, letting TopSongs show all or we can make a custom list. Let's make a custom mini list. */}
           
           <div className={styles.popularList}>
-             {artistSongs.slice(0, 5).map((song, index) => (
+             {artistSongs.slice(0, 10).map((song, index) => (
                 <div key={song.id} className={styles.popularRow} onClick={() => setCurrentSong(song)}>
                   <span className={styles.trackNum}>{index + 1}</span>
-                  <img src={song.cover} alt="cover" className={styles.trackCover} />
+                  <SongCover 
+                    src={song.cover} 
+                    alt="cover" 
+                    size="small" 
+                    className={styles.trackCover} 
+                  />
                   <span className={styles.trackTitle}>{song.title}</span>
-                  <span className={styles.trackPlays}>{(10000000 / (index+1)).toLocaleString()}</span>
-                  <span className={styles.trackTime}>3:45</span>
                 </div>
              ))}
           </div>
@@ -109,7 +128,12 @@ const ArtistDetail = () => {
         <div className={styles.sideColumn}>
           <h2 className={styles.sectionTitle}>About</h2>
           <div className={styles.bioCard}>
-             <img src={artistImage} alt="bio" className={styles.bioImage} />
+             <SongCover 
+               src={artistImage} 
+               alt="bio" 
+               size="large" 
+               className={styles.bioImage} 
+             />
              <div className={styles.bioContent}>
                <p className={styles.bioText}>
                  {decodedName} is a featured artist on Rhymic. Explore their discography and discover top hits.
@@ -117,16 +141,27 @@ const ArtistDetail = () => {
              </div>
           </div>
           
-          <h2 className={styles.sectionTitle} style={{marginTop: '32px'}}>Fans Also Like</h2>
-          <div className={styles.similarArtists}>
-            {/* Placeholder for similar artists */}
-            {[1, 2, 3].map(i => (
-               <div key={i} className={styles.similarCard}>
-                 <div className={styles.similarAvatar}></div>
-                 <span className={styles.similarName}>Similar Artist {i}</span>
-               </div>
-            ))}
-          </div>
+          {similarArtists.length > 0 && (
+            <>
+              <h2 className={styles.sectionTitle} style={{marginTop: '32px'}}>Fans Also Like</h2>
+              <div className={styles.similarArtists}>
+                {similarArtists.map((artistName, i) => (
+                   <div 
+                     key={i} 
+                     className={styles.similarCard}
+                     onClick={() => {
+                       fetchedRef.current = false;
+                       navigate(`/artist/${encodeURIComponent(artistName)}`);
+                     }}
+                     style={{ cursor: 'pointer' }}
+                   >
+                     <div className={styles.similarAvatar}></div>
+                     <span className={styles.similarName}>{artistName}</span>
+                   </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

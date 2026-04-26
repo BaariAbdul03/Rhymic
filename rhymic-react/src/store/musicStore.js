@@ -1,24 +1,76 @@
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
-import { songsApi, playlistsApi, likesApi } from '../services/api';
+import { songsApi, playlistsApi, likesApi, moodApi } from '../services/api';
 
 export const useMusicStore = create((set, get) => ({
   songs: [],
   currentSong: null,
   likedSongs: [],
+  likedSongsLoading: false,
   playlists: [],
   currentPlaylist: null,
+  currentMood: "Euphoric", // Starts with Rhymic Gold
+  moodIndex: 0,
   queue: [], // Explicit queue array
+  originalQueue: [], // For restoring order when shuffle is off
   volume: 1,
   isPlaying: false,
   currentTime: 0,
   duration: 0,
-  audioElement: null,
+  errorTimeout: null,
+
+  // --- Audio Engine / Lab ---
+  audioContext: null,
+  analyserNode: null,
+  crossfadeNode: null,
+  eqBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // dB values for 10 bands
+  bassBoost: 0,
+  
+  setAudioContextNode: (context, analyser, crossfade) => set({ audioContext: context, analyserNode: analyser, crossfadeNode: crossfade }),
+  setEqBand: (index, value) => set((state) => {
+    const newBands = [...state.eqBands];
+    newBands[index] = value;
+    return { eqBands: newBands };
+  }),
+  setBassBoost: (val) => set({ bassBoost: val }),
+
+  // List of available moods for rotation
+  _moodList: ["Chill", "Energetic", "Melancholy", "Euphoric", "Focus", "Romantic"],
+
+  fetchSongMood: (song) => {
+    const { _moodList, moodIndex } = get();
+    const nextIndex = (moodIndex + 1) % _moodList.length;
+    
+    set({ 
+      moodIndex: nextIndex, 
+      currentMood: _moodList[nextIndex] 
+    });
+  },
   shuffle: false,
   repeat: false,
-  error: null,
+  clearError: () => {
+    const { errorTimeout } = get();
+    if (errorTimeout) clearTimeout(errorTimeout);
+    set({ error: null, errorTimeout: null });
+  },
 
-  clearError: () => set({ error: null }),
+  handlePlaybackError: (message) => {
+    const { errorTimeout, nextSong } = get();
+    if (errorTimeout) clearTimeout(errorTimeout);
+
+    set({ 
+      error: message || "Playback failed. Skipping track...", 
+      isPlaying: false 
+    });
+
+    // Auto-skip after 3 seconds
+    const timeout = setTimeout(() => {
+      set({ error: null, errorTimeout: null });
+      nextSong();
+    }, 3000);
+
+    set({ errorTimeout: timeout });
+  },
 
   fetchSongs: async () => {
     set({ error: null });
@@ -33,38 +85,52 @@ export const useMusicStore = create((set, get) => ({
   fetchLikedSongs: async () => {
     const { token } = useAuthStore.getState();
     if (!token) return;
-    set({ error: null });
+    set({ error: null, likedSongsLoading: true });
     try {
       const response = await likesApi.getAll();
-      set({ likedSongs: response.data });
+      set({ likedSongs: response.data, likedSongsLoading: false });
     } catch (error) {
        if (error.response?.status === 401) useAuthStore.getState().logout();
-      set({ error: error.message });
+      set({ error: error.message, likedSongsLoading: false });
     }
   },
 
-  toggleLike: async (songId) => {
+  toggleLike: async (input) => {
     const { token } = useAuthStore.getState();
     if (!token) {
       set({ error: "Please log in to like songs." });
       return;
     }
     
+    // Extract ID (could be string youtube_id or int local id)
+    const songId = typeof input === 'object' ? input.id : input;
     const { likedSongs } = get();
     const isLiked = likedSongs.includes(songId);
+    
     let newLikes;
+    let newSongs = [...get().songs];
+
     if (isLiked) {
        newLikes = likedSongs.filter(id => id !== songId);
     } else {
        newLikes = Array.from(new Set([...likedSongs, songId]));
+       // Critical Fix: If it's an online song and not already in our songs list, 
+       // inject it so the Favorites page can render it immediately.
+       if (typeof input === 'object' && input.source === 'online') {
+         if (!newSongs.find(s => s.id === songId)) {
+            const normalizedInput = { ...input, cover: (input.cover || input.thumbnail || "").replace(/=s\d+$/, "") + "=s0" };
+            newSongs.push(normalizedInput);
+         }
+       }
     }
-    set({ likedSongs: newLikes, error: null });
+    
+    set({ likedSongs: newLikes, songs: newSongs, error: null });
 
     try {
-      await likesApi.toggleLike(songId);
+      await likesApi.toggleLike(input);
     } catch (error) {
       if (error.response?.status === 401) useAuthStore.getState().logout();
-      set({ error: `Like sync error: ${error.message}`, likedSongs }); // Revert on error
+      set({ error: `Like sync error: ${error.message}`, likedSongs, songs: get().songs }); // Revert on error
     }
   },
 
@@ -88,6 +154,33 @@ export const useMusicStore = create((set, get) => ({
       return true;
     } catch (error) {
       set({ error: error.response?.data?.message || "Failed to create playlist" });
+      return false;
+    }
+  },
+
+  deletePlaylist: async (id) => {
+    set({ error: null });
+    try {
+      await playlistsApi.delete(id);
+      set((state) => ({ playlists: state.playlists.filter(p => p.id !== id) }));
+      return true;
+    } catch (error) {
+      set({ error: error.response?.data?.message || "Failed to delete playlist" });
+      return false;
+    }
+  },
+
+  renamePlaylist: async (id, newName) => {
+    set({ error: null });
+    try {
+      await playlistsApi.rename(id, newName);
+      set((state) => ({
+        playlists: state.playlists.map(p => p.id === id ? { ...p, name: newName } : p),
+        currentPlaylist: state.currentPlaylist?.id === id ? { ...state.currentPlaylist, name: newName } : state.currentPlaylist
+      }));
+      return true;
+    } catch (error) {
+      set({ error: error.response?.data?.message || "Failed to rename playlist" });
       return false;
     }
   },
@@ -137,43 +230,98 @@ export const useMusicStore = create((set, get) => ({
   },
 
   // --- Player Controls ---
-  setSongs: (songs) => set({ songs: songs, queue: songs }),
-  setQueue: (newQueue) => set({ queue: newQueue }),
+  setSongs: (songs) => {
+    const normalizedSongs = songs.map(s => s.source === 'online' ? { ...s, cover: (s.cover || s.thumbnail || "").replace(/=s\d+$/, "") + "=s0" } : s);
+    set({ songs: normalizedSongs, queue: normalizedSongs, originalQueue: normalizedSongs });
+  },
+  setQueue: (newQueue) => set({ queue: newQueue, originalQueue: newQueue }),
   setAudioElement: (audio) => set({ audioElement: audio }),
-  setCurrentSong: (song) => set({ currentSong: song, isPlaying: true, currentTime: 0 }),
-  togglePlay: () => set((state) => ({ isPlaying: !state.isPlaying })),
+  // --- Audio Effects Helper ---
+  _triggerCrossfade: async (duration = 0.3, targetGain = 0) => {
+    const { crossfadeNode, audioContext } = get();
+    if (crossfadeNode && audioContext) {
+      const now = audioContext.currentTime;
+      crossfadeNode.gain.cancelScheduledValues(now);
+      crossfadeNode.gain.setValueAtTime(crossfadeNode.gain.value, now);
+      crossfadeNode.gain.linearRampToValueAtTime(targetGain, now + duration);
+      if (targetGain === 0) await new Promise(r => setTimeout(r, duration * 1000));
+    }
+  },
+
+  setCurrentSong: async (song) => {
+    const { isPlaying } = get();
+    if (isPlaying) await get()._triggerCrossfade(0.3, 0);
+    
+    set({ currentSong: song, isPlaying: true, currentTime: 0 });
+    if (song) get().fetchSongMood(song);
+    
+    get()._triggerCrossfade(0.4, 1);
+  },
+
+  togglePlay: () => {
+    const { isPlaying } = get();
+    if (isPlaying) {
+      get()._triggerCrossfade(0.3, 0).then(() => set({ isPlaying: false }));
+    } else {
+      set({ isPlaying: true });
+      get()._triggerCrossfade(0.3, 1);
+    }
+  },
+
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (time) => set({ duration: time }),
   seek: (time) => { const { audioElement } = get(); if (audioElement) audioElement.currentTime = time; set({ currentTime: time }); },
-  toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
+  toggleShuffle: () => set((state) => {
+    const newShuffle = !state.shuffle;
+    if (newShuffle) {
+      // Store current order and shuffle
+      const original = [...state.queue];
+      const shuffled = [...state.queue];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      
+      // Ensure currentSong stays at its current index or move it to front?
+      // Better: keep currentSong where it is and shuffle the rest? 
+      // Actually, simple shuffle is fine.
+      return { shuffle: newShuffle, originalQueue: original, queue: shuffled };
+    } else {
+      // Restore original order
+      return { shuffle: newShuffle, queue: state.originalQueue };
+    }
+  }),
   toggleRepeat: () => set((state) => { const newRepeat = !state.repeat; if (get().audioElement) get().audioElement.loop = newRepeat; return { repeat: newRepeat }; }),
   
-  // Decoupled queue operations
-  nextSong: () => { 
-    const { queue, currentSong, shuffle } = get();
+  nextSong: async () => { 
+    const { queue, currentSong, isPlaying } = get();
     if (!currentSong || queue.length === 0) return;
-    let nextIndex;
-    if (shuffle) {
-      do { nextIndex = Math.floor(Math.random() * queue.length); } while (queue.length > 1 && queue[nextIndex].id === currentSong.id);
-    } else {
-      const currentIndex = queue.findIndex(s => s.id === currentSong.id);
-      nextIndex = (currentIndex + 1) % queue.length;
-    }
-    set({ currentSong: queue[nextIndex], isPlaying: true, currentTime: 0 });
+    
+    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+    const nextIndex = (currentIndex + 1) % queue.length;
+    const nextSongObj = queue[nextIndex];
+    
+    if (isPlaying) await get()._triggerCrossfade(0.3, 0);
+    
+    set({ currentSong: nextSongObj, isPlaying: true, currentTime: 0 });
+    get().fetchSongMood(nextSongObj);
+    get()._triggerCrossfade(0.5, 1);
   },
   
-  prevSong: () => { 
-    const { queue, currentSong, shuffle } = get();
+  prevSong: async () => { 
+    const { queue, currentSong, isPlaying } = get();
     if (!currentSong || queue.length === 0) return;
-    let prevIndex;
-    if (shuffle) {
-      do { prevIndex = Math.floor(Math.random() * queue.length); } while (queue.length > 1 && queue[prevIndex].id === currentSong.id);
-    } else {
-      const currentIndex = queue.findIndex(s => s.id === currentSong.id);
-      prevIndex = (currentIndex - 1 + queue.length) % queue.length;
-    }
-    set({ currentSong: queue[prevIndex], isPlaying: true, currentTime: 0 });
+    
+    const currentIndex = queue.findIndex(s => s.id === currentSong.id);
+    const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
+    const prevSongObj = queue[prevIndex];
+
+    if (isPlaying) await get()._triggerCrossfade(0.3, 0);
+
+    set({ currentSong: prevSongObj, isPlaying: true, currentTime: 0 });
+    get().fetchSongMood(prevSongObj);
+    get()._triggerCrossfade(0.5, 1);
   },
   
   playNext: (song) => set((state) => {

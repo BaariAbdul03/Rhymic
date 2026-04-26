@@ -1,11 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ListMusic, Home, Compass, Radio, Disc, Mic2, PlusSquare, LogOut, Heart, Sparkles, Plus } from 'lucide-react';
+import { ListMusic, Home, Compass, Radio, Disc, Mic2, PlusSquare, LogOut, Heart, Sparkles, Plus, Globe, Settings as SettingsIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
 import { useMusicStore } from '../store/musicStore';
 import { useUIStore } from '../store/uiStore';
 import Modal from './Modal';
 import styles from './Sidebar.module.css';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 260, damping: 20 } }
+};
 
 const Sidebar = () => {
   const logout = useAuthStore((state) => state.logout);
@@ -65,57 +82,103 @@ const Sidebar = () => {
           </div>
         </div>
         
-        <nav className={styles.menu}>
-          <NavLink onClick={onNavClick} to="/" end className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
-            <Home size={20} /> <span>Home</span>
-          </NavLink>
-          <NavLink onClick={onNavClick} to="/discover" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
-            <Compass size={20} /> <span>Discover</span>
-          </NavLink>
-          <NavLink onClick={onNavClick} to="/dj" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
-             <Radio size={20} /> <span>Smart DJ</span>
-          </NavLink>
-          <NavLink onClick={onNavClick} to="/subscribe" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
-             <Mic2 size={20} /> <span>Podcast</span>
-          </NavLink>
-        </nav>
+        <motion.nav 
+          className={styles.menu}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div variants={itemVariants}>
+            <NavLink onClick={onNavClick} to="/" end className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
+              <Home size={20} /> <span>Home</span>
+            </NavLink>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <NavLink onClick={onNavClick} to="/discover" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
+              <Compass size={20} /> <span>Discover</span>
+            </NavLink>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <NavLink onClick={onNavClick} to="/dj" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
+               <Radio size={20} /> <span>Smart DJ</span>
+            </NavLink>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <NavLink onClick={onNavClick} to="/explore" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
+               <Globe size={20} /> <span>Explore Online</span>
+            </NavLink>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <NavLink onClick={onNavClick} to="/subscribe" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
+               <Mic2 size={20} /> <span>Podcast</span>
+            </NavLink>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <NavLink onClick={onNavClick} to="/settings" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
+               <SettingsIcon size={20} /> <span>Settings</span>
+            </NavLink>
+          </motion.div>
+        </motion.nav>
 
-        <nav className={styles.menu}>
-          <h2 className={styles.menuTitle}>LIBRARY</h2>
-          <NavLink onClick={onNavClick} to="/liked" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
-            <Heart size={20} /> <span>Favorite Songs</span>
-          </NavLink>
-           <NavLink onClick={onNavClick} to="/upload" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
-            <PlusSquare size={20} /> <span>Local Files</span>
-          </NavLink>
-        </nav>
+        <motion.nav 
+          className={styles.menu}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.h2 variants={itemVariants} className={styles.menuTitle}>LIBRARY</motion.h2>
+          <motion.div variants={itemVariants}>
+            <NavLink onClick={onNavClick} to="/liked" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
+              <Heart size={20} /> <span>Favorite Songs</span>
+            </NavLink>
+          </motion.div>
+          <motion.div variants={itemVariants}>
+             <NavLink onClick={onNavClick} to="/upload" className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}>
+              <PlusSquare size={20} /> <span>Local Files</span>
+            </NavLink>
+          </motion.div>
+        </motion.nav>
 
-        <nav className={styles.menu}>
-          <div className={styles.libraryHeader}>
+        <motion.nav 
+          className={styles.menu}
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div variants={itemVariants} className={styles.libraryHeader}>
             <h2 className={styles.menuTitle}>PLAYLIST</h2>
             <button onClick={handleCreatePlaylistClick} className={styles.createButton}>
               <Plus size={16} strokeWidth={2.5} />
             </button>
-          </div>
+          </motion.div>
           
           <div className={styles.playlistScroll}>
-            {playlists.length > 0 ? (
-              playlists.map((playlist) => (
-                <NavLink 
-                  key={playlist.id}
-                  onClick={onNavClick}
-                  to={`/playlist/${playlist.id}`} 
-                  className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}
-                >
-                  <ListMusic size={20} />
-                  <span>{playlist.name}</span>
-                </NavLink>
-              ))
-            ) : (
-              <p className={styles.emptyText}>No playlists yet</p>
-            )}
+            <AnimatePresence>
+              {playlists.length > 0 ? (
+                playlists.map((playlist) => (
+                  <motion.div
+                    key={playlist.id}
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <NavLink 
+                      onClick={onNavClick}
+                      to={`/playlist/${playlist.id}`} 
+                      className={({ isActive }) => `${styles.menuItem} ${isActive ? styles.active : ''}`}
+                    >
+                      <ListMusic size={20} />
+                      <span>{playlist.name}</span>
+                    </NavLink>
+                  </motion.div>
+                ))
+              ) : (
+                <motion.p variants={itemVariants} className={styles.emptyText}>No playlists yet</motion.p>
+              )}
+            </AnimatePresence>
           </div>
-        </nav>
+        </motion.nav>
 
       </aside>
 

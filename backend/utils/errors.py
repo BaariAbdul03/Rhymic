@@ -22,7 +22,9 @@ def register_error_handlers(app):
         return jsonify({"message": "Rate limit exceeded. Please try again later."}), 429
 
     @app.errorhandler(500)
+    @app.errorhandler(Exception)
     def internal_server_error(error):
-        # Log the error here in a real app
-        print(f"Server Error: {error}")
+        import traceback
+        trace = traceback.format_exc()
+        print(f"Server Error: {error}\n{trace}")
         return jsonify({"message": "Internal server error"}), 500

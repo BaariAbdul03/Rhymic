@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Menu, User as UserIcon, LogOut } from 'lucide-react';
+import { Search, Menu, User as UserIcon, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import { useMusicStore } from '../store/musicStore';
@@ -11,6 +12,7 @@ const Topbar = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
   
   const user = useAuthStore((state) => state.user);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
@@ -20,6 +22,14 @@ const Topbar = () => {
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -33,8 +43,9 @@ const Topbar = () => {
     if (path.startsWith('/playlist/')) return 'Library / Playlist';
     if (path === '/liked') return 'Library / Favorite Songs';
     if (path === '/dj') return 'AI / Smart DJ';
-    if (path === '/podcast') return 'Podcast';
-    if (path === '/local-files') return 'Library / Local Files';
+    if (path === '/subscribe') return 'Podcast';
+    if (path === '/upload') return 'Library / Local Files';
+    if (path.startsWith('/artist/')) return 'Explore / Artist';
     return 'Rhymic';
   };
 
@@ -71,15 +82,11 @@ const Topbar = () => {
   }, []);
 
   return (
-    <header className={styles.topbar}>
+    <header className={`${styles.topbar} ${scrolled ? styles.scrolled : ''}`}>
       <div className={styles.leftSection}>
         <button className={styles.hamburger} onClick={toggleSidebar}>
           <Menu size={24} />
         </button>
-
-        <div className={styles.navControls}>
-          {/* Toggles Removed per user request */}
-        </div>
 
         <div className={styles.breadcrumbs}>
           {getBreadcrumbs()}
@@ -99,38 +106,56 @@ const Topbar = () => {
           />
         </div>
 
-        {isDropdownOpen && searchResults.length > 0 && (
-          <div className={styles.searchResults}>
-            {searchResults.map((song) => (
-              <div 
-                key={song.id} 
-                className={styles.resultItem}
-                onClick={() => handleResultClick(song)}
-              >
-                <img src={song.cover} alt="cover" className={styles.resultCover} />
-                <div className={styles.resultInfo}>
-                  <p className={styles.resultTitle}>{song.title}</p>
-                  <p className={styles.resultArtist}>{song.artist}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <AnimatePresence>
+          {isDropdownOpen && searchResults.length > 0 && (
+            <motion.div 
+              className={styles.searchResults}
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            >
+              {searchResults.map((song, i) => (
+                <motion.div 
+                  key={song.id} 
+                  className={styles.resultItem}
+                  onClick={() => handleResultClick(song)}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <img loading="lazy" width="40" height="40" src={song.cover} alt="cover" className={styles.resultCover} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder-cover.png"; }} />
+                  <div className={styles.resultInfo}>
+                    <p className={styles.resultTitle}>{song.title}</p>
+                    <p className={styles.resultArtist}>{song.artist}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className={styles.rightSection}>
-        {/* Bell Icon Removed per user request */}
-
         {user ? (
           <div className={styles.userProfile} onClick={() => navigate('/profile')}>
-            {user.profile_pic ? (
-              <img src={user.profile_pic} alt="Profile" className={styles.profileImage} />
-            ) : (
-              <div className={styles.profileFallback}>
-                <UserIcon size={18} />
-              </div>
-            )}
+            <div className={styles.avatarWrapper}>
+              {user.profile_pic ? (
+                <img src={user.profile_pic} alt="Profile" className={styles.profileImage} />
+              ) : (
+                <div className={styles.profileFallback}>
+                  <UserIcon size={18} />
+                </div>
+              )}
+            </div>
             <span className={styles.userName}>{user.name}</span>
+            <button 
+              className={styles.logoutBtn} 
+              onClick={(e) => { e.stopPropagation(); navigate('/settings'); }}
+              title="Settings"
+            >
+              <SettingsIcon size={18} />
+            </button>
             <button 
               className={styles.logoutBtn} 
               onClick={(e) => { e.stopPropagation(); handleLogout(); }}

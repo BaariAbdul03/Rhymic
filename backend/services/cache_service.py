@@ -84,7 +84,6 @@ class ThumbnailCache:
             file_path = os.path.join(self.cache_dir, file_hash)
             temp_path = os.path.join(self.cache_dir, f"{file_hash}.{uuid.uuid4()}.tmp")
 
-        try:
             total_bytes = 0
             with open(temp_path, 'wb') as f:
                 if isinstance(response, bytes):
@@ -97,14 +96,14 @@ class ThumbnailCache:
 
             if total_bytes == 0:
                 print(f"[Cache] Empty image skipped: {url[:80]}")
-                os.remove(temp_path)
+                if os.path.exists(temp_path): os.remove(temp_path)
                 return None
 
             # Atomic rename — only happens on success with non-zero content
             os.replace(temp_path, file_path)
             return str(Path(file_path).absolute())
         except Exception as e:
-            if os.path.exists(temp_path):
+            if 'temp_path' in locals() and os.path.exists(temp_path):
                 try:
                     os.remove(temp_path)
                 except Exception:

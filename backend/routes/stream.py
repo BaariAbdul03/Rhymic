@@ -47,15 +47,18 @@ def fix_thumbnail(url):
 
 def resolve_piped_fallback(video_id):
     """Fallback: Resolve stream via a public Piped instance if yt-dlp is blocked."""
-    # List of reliable public Piped instances
+    # List of reliable public Piped instances (2024 verified)
     instances = [
         "https://pipedapi.kavin.rocks",
-        "https://pipedapi.tokhmi.xyz",
-        "https://api.piped.privacydev.net"
+        "https://api-piped.mha.fi",
+        "https://piped-api.hostux.net",
+        "https://pipedapi.adminforge.de",
+        "https://pipedapi.tokhmi.xyz"
     ]
     for base_url in instances:
         try:
-            resp = py_requests.get(f"{base_url}/streams/{video_id}", timeout=5)
+            print(f"[Piped Fallback] Attempting: {base_url}")
+            resp = py_requests.get(f"{base_url}/streams/{video_id}", timeout=4)
             if resp.status_code == 200:
                 data = resp.json()
                 audio_streams = data.get('audioStreams', [])
@@ -63,7 +66,8 @@ def resolve_piped_fallback(video_id):
                     # Pick the highest quality m4a/mp4 stream
                     best = sorted(audio_streams, key=lambda x: x.get('bitrate', 0), reverse=True)[0]
                     return best.get('url'), "m4a (piped)"
-        except Exception:
+        except Exception as e:
+            print(f"[Piped Fallback] Failed {base_url}: {e}")
             continue
     return None, None
 
@@ -87,7 +91,7 @@ def get_audio_stream_url(video_id):
                 'skip': ['hls', 'dash']
             }
         },
-        'socket_timeout': 10
+        'socket_timeout': 7 # Faster fail in prod
     }
     
     try:
@@ -107,17 +111,13 @@ def search_online():
         return jsonify({"message": "Query required"}), 400
         
     try:
-        # filter="songs" guarantees ONLY official songs from YouTube Music catalog
-        # This eliminates the video/cover/fan-upload problem entirely
         raw = ytmusic.search(query, filter="songs")
         
         results = []
         for item in raw[:15]:
             artists = ", ".join([a['name'] for a in item.get('artists', [])])
             thumbs = item.get('thumbnails', [])
-            # Use highest-res thumbnail available
             cover = fix_thumbnail(thumbs[-1]['url']) if thumbs else ''
-            
             album = item.get('album', {})
             
             results.append({
@@ -152,22 +152,21 @@ def get_audio_url(video_id):
 def proxy_audio(video_id):
     """
     Direct byte-level proxy. The browser's <audio> element hits this URL.
-    Flask fetches the real audio from YouTube's CDN and pipes it through
-    so the browser thinks it's a same-origin file -> no CORS, no tainted canvas.
-    Supports HTTP Range requests for seeking.
     """
     try:
         audio_url, _ = get_audio_stream_url(video_id)
         if not audio_url:
             return Response("Not found", status=404)
         
-        # Forward Range header for seeking support
         headers = {}
         range_header = request.headers.get('Range')
         if range_header:
             headers['Range'] = range_header
         
-        upstream = py_requests.get(audio_url, stream=True, headers=headers, timeout=10)
+        # Add User-Agent to upstream request
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+
+        upstream = py_requests.get(audio_url, stream=True, headers=headers, timeout=15)
         
         resp_headers = {
             'Content-Type': upstream.headers.get('Content-Type', 'audio/webm'),
@@ -193,7 +192,6 @@ def proxy_audio(video_id):
 def proxy_thumbnail():
     """
     Proxies thumbnails to bypass CORS/Referrer blocks.
-    Supports persistent cloud caching via Supabase + local disk fallback.
     """
     from backend.services.cache_service import thumbnail_cache
     from backend.services.storage_service import upload_thumbnail, get_cached_thumbnail_url
@@ -201,31 +199,32 @@ def proxy_thumbnail():
     import mimetypes
 
     target_url = request.args.get('url')
+    fallback_url = request.args.get('fallback')
+    
     if not target_url:
         return Response("URL required", status=400)
     
-    file_hash = thumbnail_cache._get_hash(target_url)
-
-    # Tier 1: Check Local Disk Cache (Fastest)
-    cached_path = thumbnail_cache.get_cached_path(target_url)
-    if cached_path:
-        mime = mimetypes.guess_type(target_url)[0] or 'image/jpeg'
-        return send_file(cached_path, mimetype=mime)
-
-    # Tier 2: Check Supabase (Persistence)
-    # Note: We only do this if local cache missed to save network time
-    cloud_url = get_cached_thumbnail_url(file_hash)
-    if cloud_url:
-        # Check if actually reachable (simple 1s HEAD request)
-        try:
-            head = py_requests.head(cloud_url, timeout=1)
-            if head.status_code == 200:
-                return redirect(cloud_url)
-        except Exception:
-            pass
-
-    # Tier 3: Fetch and Save to Cache
     try:
+        file_hash = thumbnail_cache._get_hash(target_url)
+
+        # Tier 1: Local Disk Cache
+        try:
+            cached_path = thumbnail_cache.get_cached_path(target_url)
+            if cached_path:
+                mime = mimetypes.guess_type(target_url)[0] or 'image/jpeg'
+                return send_file(cached_path, mimetype=mime)
+        except Exception: pass
+
+        # Tier 2: Supabase (Persistence)
+        cloud_url = get_cached_thumbnail_url(file_hash)
+        if cloud_url:
+            try:
+                head = py_requests.head(cloud_url, timeout=1.5)
+                if head.status_code == 200:
+                    return redirect(cloud_url)
+            except Exception: pass
+
+        # Tier 3: Fetch Upstream
         common_headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
             'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
@@ -233,29 +232,37 @@ def proxy_thumbnail():
         }
 
         session = py_requests.Session()
-        resp = session.get(target_url, headers=common_headers, stream=True, timeout=10)
-        
-        original_url = request.args.get('fallback')
-        if resp.status_code != 200 and original_url and original_url != target_url:
-            resp.close()
-            resp = session.get(original_url, headers=common_headers, stream=True, timeout=10)
-
-        if resp.status_code != 200:
-            return Response(f"Upstream error: {resp.status_code}", status=resp.status_code)
+        try:
+            resp = session.get(target_url, headers=common_headers, stream=True, timeout=8)
+            if resp.status_code != 200 and fallback_url and fallback_url != target_url:
+                resp.close()
+                resp = session.get(fallback_url, headers=common_headers, stream=True, timeout=8)
             
-        # 1. Save to Local Cache for this session
-        content = resp.content # We need full content for Supabase upload too
-        full_path = thumbnail_cache.save_to_cache(target_url, content)
-        
-        # 2. Upload to Supabase for all sessions
-        mime = resp.headers.get('Content-Type', 'image/jpeg')
-        upload_thumbnail(content, file_hash, mime)
+            if resp.status_code == 200:
+                content = resp.content
+                mime = resp.headers.get('Content-Type', 'image/jpeg')
+                
+                # Async-ish save (don't let it block the response if possible, but for now we do it)
+                try:
+                    thumbnail_cache.save_to_cache(target_url, content)
+                    upload_thumbnail(content, file_hash, mime)
+                except Exception: pass
 
-        return Response(content, status=200, headers={'Content-Type': mime})
+                return Response(content, status=200, headers={'Content-Type': mime})
+        except Exception as fetch_err:
+            print(f"[Thumbnail Proxy Fetch Err] {fetch_err}")
+
+        # Tier 4: FINAL REDIRECT (Bypass Proxy)
+        # if proxy fails, just send the client directly to the fallback URL
+        # The SongCover component in React will handle the CORS failure if it happens
+        if fallback_url:
+            return redirect(fallback_url)
+        return Response("Proxy failed", status=504)
 
     except Exception as e:
-        print(f"[Thumbnail Proxy Error] {e}")
-        return Response("Proxy internal error", status=504)
+        print(f"[Thumbnail Proxy Critical Error] {e}")
+        if fallback_url: return redirect(fallback_url)
+        return Response("Internal Error", status=500)
     
 @stream_bp.route('/trending', methods=['GET'])
 @jwt_required()

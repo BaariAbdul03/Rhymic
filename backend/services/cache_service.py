@@ -20,12 +20,17 @@ class ThumbnailCache:
     """
 
     def __init__(self, cache_dir=None):
-        if cache_dir is None:
-            # Always use an absolute path relative to this file's location
-            base_dir = Path(__file__).parent.parent
-            cache_dir = str(base_dir / 'data' / 'cache' / 'thumbnails')
-        self.cache_dir = cache_dir
-        os.makedirs(self.cache_dir, exist_ok=True)
+        try:
+            if cache_dir is None:
+                # Always use an absolute path relative to this file's location
+                base_dir = Path(__file__).parent.parent
+                cache_dir = str(base_dir / 'data' / 'cache' / 'thumbnails')
+            self.cache_dir = cache_dir
+            os.makedirs(self.cache_dir, exist_ok=True)
+            self.enabled = True
+        except Exception as e:
+            print(f"[Cache] Initialization failed (Read-only?): {e}")
+            self.enabled = False
 
     def _stable_key(self, url):
         """
@@ -57,22 +62,27 @@ class ThumbnailCache:
 
     def get_cached_path(self, url):
         """Returns the absolute local path if cached, else None."""
-        file_hash = self._get_hash(url)
-        file_path = os.path.join(self.cache_dir, file_hash)
+        if not self.enabled: return None
+        try:
+            file_hash = self._get_hash(url)
+            file_path = os.path.join(self.cache_dir, file_hash)
 
-        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-            return str(Path(file_path).absolute())
+            if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                return str(Path(file_path).absolute())
+        except Exception:
+            pass
         return None
 
     def save_to_cache(self, url, response):
         """
         Saves a requests response stream to the cache atomically.
-        Uses UUID-based temp files to prevent Windows file-lock collisions
-        when multiple threads download different songs concurrently.
         """
-        file_hash = self._get_hash(url)
-        file_path = os.path.join(self.cache_dir, file_hash)
-        temp_path = os.path.join(self.cache_dir, f"{file_hash}.{uuid.uuid4()}.tmp")
+        if not self.enabled: return None
+        
+        try:
+            file_hash = self._get_hash(url)
+            file_path = os.path.join(self.cache_dir, file_hash)
+            temp_path = os.path.join(self.cache_dir, f"{file_hash}.{uuid.uuid4()}.tmp")
 
         try:
             total_bytes = 0

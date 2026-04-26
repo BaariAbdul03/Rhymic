@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, Response
 from flask_jwt_extended import jwt_required
 import re
+import os
 import yt_dlp
 from ytmusicapi import YTMusic
 import requests as py_requests
@@ -168,14 +169,51 @@ def resolve_invidious_fallback(video_id):
             continue
     return None, None
 
+def resolve_via_node_service(video_id):
+    """
+    Tier 0: Call the dedicated Node.js resolver microservice.
+    This runs on a separate Render service with a different IP pool,
+    bypassing YouTube's data-center IP blocks on the Flask service.
+    """
+    resolver_url = os.environ.get('RESOLVER_SERVICE_URL', '').rstrip('/')
+    resolver_key = os.environ.get('RESOLVER_API_KEY', 'rhymic-resolver-key')
+    
+    if not resolver_url:
+        return None, None
+    
+    try:
+        print(f"[NodeResolver] Attempting for {video_id} via {resolver_url}")
+        resp = py_requests.get(
+            f"{resolver_url}/resolve/{video_id}",
+            headers={'x-resolver-key': resolver_key},
+            timeout=12
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get('url'):
+                print(f"[NodeResolver] Success for {video_id}")
+                return data['url'], data.get('mimeType', 'audio')
+        print(f"[NodeResolver] Failed: HTTP {resp.status_code}")
+    except Exception as e:
+        print(f"[NodeResolver] Error: {e}")
+    
+    return None, None
+
+
 def get_audio_stream_url(video_id):
     """
-    Three-Tiered Resolution:
+    Four-Tiered Resolution (in order of reliability):
+    0. Node.js Resolver Service (separate Render IP — never blocked)
     1. yt-dlp with aggressive spoofing (iOS/Android/Web)
     2. Piped API instances (dynamic)
     3. Invidious API instances (dynamic)
     """
     url = f"https://music.youtube.com/watch?v={video_id}"
+    
+    # Tier 0: Node.js resolver microservice (primary — different IP from Render)
+    stream_url, fmt = resolve_via_node_service(video_id)
+    if stream_url:
+        return stream_url, fmt
     
     # Tier 1: yt-dlp with updated spoofing (iOS is currently less blocked)
     ydl_opts = {

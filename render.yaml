@@ -27,3 +27,25 @@ services:
         sync: false
       - key: SUPABASE_SERVICE_KEY
         sync: false
+      - key: RESOLVER_SERVICE_URL
+        sync: false
+      - key: RESOLVER_API_KEY
+        sync: false
+
+  # ----------------------------------------
+  # Node.js Audio Resolver Microservice
+  # Runs on a separate Render IP to bypass YouTube's
+  # data-center IP blocks on the Flask service.
+  # ----------------------------------------
+  - type: web
+    name: rhymic-resolver
+    env: node
+    rootDir: resolver-service
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: RESOLVER_API_KEY
+        sync: false

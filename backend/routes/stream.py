@@ -167,17 +167,15 @@ def resolve_invidious_fallback(video_id):
         except Exception as e:
             print(f"[Invidious] Failed {base_url}: {e}")
             continue
-    return None, None
-
 def resolve_via_node_service(video_id):
     """
-    Tier 0: Call the dedicated Node.js resolver microservice (running internally).
+    Tier 4: Call the dedicated Node.js resolver microservice (running internally).
     """
     resolver_url = "http://localhost:3001"
     resolver_key = os.environ.get('RESOLVER_API_KEY', 'rhymic-resolver-key')
     
     try:
-        print(f"[NodeResolver] Attempting for {video_id}")
+        # print(f"[NodeResolver] Attempting for {video_id}")
         resp = py_requests.get(
             f"{resolver_url}/resolve/{video_id}",
             headers={'x-resolver-key': resolver_key},
@@ -188,75 +186,51 @@ def resolve_via_node_service(video_id):
             if data.get('url'):
                 print(f"[NodeResolver] Success for {video_id}")
                 return data['url'], data.get('mimeType', 'audio')
-    except Exception as e:
-        print(f"[NodeResolver] Error: {e}")
+    except Exception:
+        pass
     return None, None
 
 def resolve_via_cobalt(video_id):
     """
-    Tier 4: Cobalt API. Very resilient third-party downloader API.
+    Tier 1: Cobalt API. Highly resilient and proxies the stream itself.
     """
     try:
-        print(f"[Cobalt] Attempting for {video_id}")
+        print(f"[Cobalt] Resolving {video_id}...")
         payload = {
             "url": f"https://www.youtube.com/watch?v={video_id}",
             "downloadMode": "audio",
             "audioFormat": "mp3",
-            "youtubeVideoCodec": "h264",
-            "alwaysProxy": True
+            "alwaysProxy": True # This is crucial for bypassing IP locks
         }
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
-        # Known healthy cobalt instances
+        # Try primary and secondary Cobalt instances
         for api_url in ["https://api.cobalt.tools", "https://cobalt.api.unext.cc"]:
             try:
-                resp = py_requests.post(api_url, json=payload, headers=headers, timeout=10)
+                resp = py_requests.post(api_url, json=payload, headers=headers, timeout=12)
                 if resp.status_code == 200:
                     data = resp.json()
                     if data.get("status") == "stream" and data.get("url"):
-                        print(f"[Cobalt] Success via {api_url}")
+                        print(f"[Cobalt] SUCCESS via {api_url}")
                         return data["url"], "audio/mp3"
             except: continue
     except Exception as e:
-        print(f"[Cobalt] Error: {e}")
+        print(f"[Cobalt] Critical Error: {e}")
     return None, None
 
 def get_audio_stream_url(video_id):
     """
-    Five-Tiered Resolution:
-    0. Node.js Resolver (Internal)
-    1. yt-dlp (Aggressive Spoofing)
-    2. Piped API (Dynamic)
-    3. Invidious API (Dynamic)
-    4. Cobalt API (External)
+    Refined Resolution Strategy for Production:
+    1. Cobalt (External Proxy - Best for data centers)
+    2. Piped (Via high-reliability instances)
+    3. Invidious (Fallback)
+    4. Internal Node Resolver (If running)
+    5. yt-dlp (Last resort - likely blocked)
     """
-    url = f"https://music.youtube.com/watch?v={video_id}"
-    
-    # Tier 0: Node.js resolver
-    stream_url, fmt = resolve_via_node_service(video_id)
+    # Tier 1: Cobalt (The new primary for production)
+    stream_url, fmt = resolve_via_cobalt(video_id)
     if stream_url: return stream_url, fmt
-    
-    # Tier 1: yt-dlp
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'quiet': True, 'no_warnings': True, 'noplaylist': True,
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['ios', 'android', 'web_embedded'],
-                'skip': ['hls', 'dash']
-            }
-        },
-        'socket_timeout': 5
-    }
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            stream_url = info.get('url')
-            if stream_url:
-                print(f"[yt-dlp] Success for {video_id}")
-                return stream_url, info.get('format')
-    except Exception: pass
-    
-    # Tier 2: Piped
+
+    # Tier 2: Piped (Try a set of instances known to allow DC traffic)
     stream_url, fmt = resolve_piped_fallback(video_id)
     if stream_url: return stream_url, fmt
     
@@ -264,11 +238,25 @@ def get_audio_stream_url(video_id):
     stream_url, fmt = resolve_invidious_fallback(video_id)
     if stream_url: return stream_url, fmt
     
-    # Tier 4: Cobalt
-    stream_url, fmt = resolve_via_cobalt(video_id)
+    # Tier 4: Node Resolver
+    stream_url, fmt = resolve_via_node_service(video_id)
     if stream_url: return stream_url, fmt
     
-    print(f"[Audio] ALL RESOLUTION TIERS FAILED for {video_id}")
+    # Tier 5: yt-dlp (Likely to fail on Render but works in Dev)
+    try:
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'quiet': True, 'no_warnings': True, 'noplaylist': True,
+            'extractor_args': {'youtube': {'player_client': ['ios', 'android']}},
+            'socket_timeout': 5
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            if info.get('url'):
+                print(f"[yt-dlp] Success for {video_id}")
+                return info['url'], info.get('format')
+    except: pass
+    
     return None, None
 
 @stream_bp.route('/search', methods=['GET'])

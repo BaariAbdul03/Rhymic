@@ -159,7 +159,8 @@ def resolve_invidious_fallback(video_id):
                 audio_formats = [f for f in adaptive if f.get('type', '').startswith('audio/')]
                 if audio_formats:
                     # Sort by bitrate
-                    best = sorted(audio_formats, key=lambda x: int(x.get('bitrate', '0').replace(',', '')), reverse=True)[0]
+                    audio_formats.sort(key=lambda x: int(x.get('bitrate', '0').replace(',', '')), reverse=True)
+                    best = audio_formats[0]
                     url = best.get('url', '')
                     if url:
                         print(f"[Invidious] Success via {base_url}")
@@ -167,6 +168,8 @@ def resolve_invidious_fallback(video_id):
         except Exception as e:
             print(f"[Invidious] Failed {base_url}: {e}")
             continue
+    return None, None
+
 def resolve_via_node_service(video_id):
     """
     Tier 4: Call the dedicated Node.js resolver microservice (running internally).
@@ -297,11 +300,18 @@ def get_audio_url(video_id):
             return jsonify({
                 "message": "All resolution tiers failed.",
                 "debug": f"Piped:{len(piped)} Inv:{len(invidious)}",
-                "suggestion": "Check server logs for bot detection or instance failures."
+                "suggestion": "Check server logs for bot detection."
             }), 404
         return jsonify({"url": audio_url, "format": fmt}), 200
     except Exception as e:
-        return jsonify({"message": str(e)}), 500
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"[Stream Audio ERROR]\n{error_details}")
+        return jsonify({
+            "message": "Internal Server Error during resolution",
+            "error": str(e),
+            "traceback": error_details if os.environ.get('FLASK_CONFIG') != 'production' else "Check server logs"
+        }), 500
 
 @stream_bp.route('/proxy/<video_id>', methods=['GET'])
 def proxy_audio(video_id):

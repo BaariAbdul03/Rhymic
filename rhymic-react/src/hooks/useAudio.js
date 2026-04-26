@@ -28,17 +28,42 @@ export const useAudio = () => {
 
   // Effect 2: Load a new song
   useEffect(() => {
-    if (currentSong) {
-      // If the song is an online track, route it through the Flask proxy to bypass CORS
-      // which would otherwise taint the Canvas Visualizer.
-      const trackSrc = currentSong.source === 'online' 
-        ? `/api/stream/proxy/${currentSong.id}` 
-        : currentSong.src;
-        
+    if (!currentSong) return;
+
+    const loadSong = async () => {
+      let trackSrc;
+
+      if (currentSong.source === 'online') {
+        // TWO-STEP STRATEGY:
+        // 1. Ask backend to resolve the direct CDN stream URL (lightweight)
+        // 2. Play directly from that CDN URL (user's residential IP, never blocked)
+        // This bypasses YouTube blocking Render's server IP.
+        try {
+          const token = localStorage.getItem('token');
+          const resp = await fetch(`/api/stream/audio/${currentSong.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const data = await resp.json();
+          if (data.url) {
+            trackSrc = data.url;
+          } else {
+            console.error("[Audio] No stream URL returned for:", currentSong.id);
+            useMusicStore.getState().handlePlaybackError(`Could not resolve stream for "${currentSong.title}"`);
+            return;
+          }
+        } catch (e) {
+          console.error("[Audio] Stream resolution failed:", e);
+          useMusicStore.getState().handlePlaybackError(`Stream error: "${currentSong.title}"`);
+          return;
+        }
+      } else {
+        trackSrc = currentSong.src;
+      }
+
       audio.src = trackSrc;
-      // Set volume one time on load from the store's state
       audio.volume = useMusicStore.getState().volume;
       audio.load();
+      
       if (isPlaying) {
         const playPromise = audio.play();
         if (playPromise !== undefined) {
@@ -49,7 +74,9 @@ export const useAudio = () => {
           });
         }
       }
-    }
+    };
+
+    loadSong();
   }, [currentSong, audio]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Effect 3: Handle Play/Pause

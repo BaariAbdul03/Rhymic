@@ -23,25 +23,20 @@ const SongCover = ({ src, alt, className, size = 'large' }) => {
   }, [src]);
 
   const handleImageError = () => {
-    // STAGE 1 -> 2: If proxy fails, try direct fallback URL
-    if (retryStage === 0 && imgSrc && imgSrc.includes('/api/stream/thumbnail')) {
-      try {
-        const urlParams = new URL(imgSrc, window.location.origin).searchParams;
-        const fallback = urlParams.get('fallback');
-        if (fallback) {
-          console.warn("[SongCover] Stage 1 failed. Falling back to direct URL.");
-          setImgSrc(fallback);
-          setRetryStage(1);
-          return;
-        }
-      } catch (e) {}
+    // STAGE 0 -> 1: If high-res (=s0) Google CDN image fails, try lower res
+    if (retryStage === 0 && imgSrc && imgSrc.includes('googleusercontent.com')) {
+      console.warn("[SongCover] High-res failed. Trying lower resolution.");
+      const lowRes = imgSrc.split('=')[0] + "=s226";
+      setImgSrc(lowRes);
+      setRetryStage(1);
+      return;
     }
 
-    // STAGE 2 -> 3: If direct URL fails and it's a google CDN, try to downgrade quality for stability
+    // STAGE 1 -> 2: If lower-res also fails, try minimal thumbnail
     if (retryStage === 1 && imgSrc && imgSrc.includes('googleusercontent.com')) {
-      console.warn("[SongCover] Stage 2 failed. Attempting low-res fallback.");
-      const lowRes = imgSrc.split('=')[0] + "=s120"; // Force small size instead of s0
-      setImgSrc(lowRes);
+      console.warn("[SongCover] Mid-res failed. Trying minimal thumbnail.");
+      const miniRes = imgSrc.split('=')[0] + "=s60";
+      setImgSrc(miniRes);
       setRetryStage(2);
       return;
     }

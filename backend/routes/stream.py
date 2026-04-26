@@ -12,9 +12,10 @@ ytmusic = YTMusic()
 
 def fix_thumbnail(url):
     """
-    ULTIMATE PERMANENT FIX:
-    1. For Google-hosted images: Force '=s0' for max quality.
-    2. For YouTube images: Force 'maxresdefault.jpg' for HD video covers.
+    Returns a direct, high-quality image URL.
+    No proxying — Google CDN images load fine directly in <img> tags
+    with referrerPolicy="no-referrer" (which SongCover.jsx already uses).
+    Proxying through Render's flagged IP was causing 500s and slow loads.
     """
     if not url:
         return ''
@@ -22,27 +23,16 @@ def fix_thumbnail(url):
     # CASE A: Google CDN (lh3.googleusercontent.com, etc.)
     if 'googleusercontent.com' in url or 'ggpht.com' in url:
         if '=' in url:
-            # Strip existing size params and force s0
             base = url.split('=')[0]
             url = f"{base}=s0"
         else:
             url = f"{url}=s0"
             
     # CASE B: YouTube Video CDN (i.ytimg.com)
-    hi_res_url = url
     if 'i.ytimg.com' in url:
         if 'default.jpg' in url:
-            # Try to upgrade to maxres or hq
-            hi_res_url = url.replace('default.jpg', 'maxresdefault.jpg')
+            url = url.replace('default.jpg', 'maxresdefault.jpg')
     
-    # Proxy ONLY external online images through the backend.
-    if url.startswith('http'):
-        import urllib.parse
-        # We pass BOTH the high-res attempt and the original fallback to the proxy
-        proxy_base = "/api/stream/thumbnail"
-        query = f"?url={urllib.parse.quote(hi_res_url)}&fallback={urllib.parse.quote(url)}"
-        return f"{proxy_base}{query}"
-        
     return url
 
 def resolve_piped_fallback(video_id):

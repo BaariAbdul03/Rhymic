@@ -35,37 +35,132 @@ def fix_thumbnail(url):
     
     return url
 
-def resolve_piped_fallback(video_id):
-    """Fallback: Resolve stream via a public Piped instance if yt-dlp is blocked."""
-    # List of reliable public Piped instances (2024 verified)
-    instances = [
-        "https://pipedapi.kavin.rocks",
-        "https://api-piped.mha.fi",
-        "https://piped-api.hostux.net",
-        "https://pipedapi.adminforge.de",
-        "https://pipedapi.tokhmi.xyz"
-    ]
-    for base_url in instances:
+# --- Dynamic Instance Resolution System ---
+# Instead of hardcoding stale instance URLs, we fetch the list of healthy
+# instances from official registries on startup and refresh periodically.
+
+import time
+import threading
+
+_instance_cache = {
+    "piped": [],
+    "invidious": [],
+    "last_refresh": 0,
+    "lock": threading.Lock()
+}
+
+INSTANCE_REFRESH_INTERVAL = 1800  # 30 minutes
+
+def _refresh_instances():
+    """Fetch healthy Piped and Invidious instances from official registries."""
+    piped_apis = []
+    invidious_apis = []
+    
+    # Fetch Piped instances
+    try:
+        resp = py_requests.get("https://piped-instances.kavin.rocks/", timeout=5)
+        if resp.status_code == 200:
+            for inst in resp.json():
+                api_url = inst.get("api_url", "")
+                if api_url and inst.get("up_to_date"):
+                    piped_apis.append(api_url.rstrip("/"))
+            print(f"[Instances] Loaded {len(piped_apis)} Piped instances")
+    except Exception as e:
+        print(f"[Instances] Failed to fetch Piped list: {e}")
+    
+    # Fetch Invidious instances
+    try:
+        resp = py_requests.get("https://api.invidious.io/instances.json?sort_by=health", timeout=5)
+        if resp.status_code == 200:
+            for item in resp.json():
+                name, info = item[0], item[1]
+                # Only use HTTPS instances with API enabled
+                if (info.get("type") == "https" and 
+                    info.get("api") is True and
+                    info.get("monitor", {}).get("down") is False):
+                    invidious_apis.append(info["uri"].rstrip("/"))
+            print(f"[Instances] Loaded {len(invidious_apis)} Invidious instances")
+    except Exception as e:
+        print(f"[Instances] Failed to fetch Invidious list: {e}")
+    
+    # Hardcoded fallbacks in case the registries themselves are down
+    if not piped_apis:
+        piped_apis = ["https://api.piped.private.coffee", "https://pipedapi.kavin.rocks"]
+    if not invidious_apis:
+        invidious_apis = ["https://inv.nadeko.net", "https://inv.thepixora.com", "https://invidious.nerdvpn.de"]
+    
+    with _instance_cache["lock"]:
+        _instance_cache["piped"] = piped_apis
+        _instance_cache["invidious"] = invidious_apis
+        _instance_cache["last_refresh"] = time.time()
+
+def _get_instances():
+    """Returns cached instance lists, refreshing if stale."""
+    if time.time() - _instance_cache["last_refresh"] > INSTANCE_REFRESH_INTERVAL:
         try:
-            print(f"[Piped Fallback] Attempting: {base_url}")
-            resp = py_requests.get(f"{base_url}/streams/{video_id}", timeout=4)
+            _refresh_instances()
+        except Exception:
+            pass  # Use stale cache if refresh fails
+    with _instance_cache["lock"]:
+        return list(_instance_cache["piped"]), list(_instance_cache["invidious"])
+
+# Initialize instances on module load (in a thread to not block startup)
+threading.Thread(target=_refresh_instances, daemon=True).start()
+
+
+def resolve_piped_fallback(video_id):
+    """Resolve stream via dynamically-fetched Piped instances."""
+    piped_apis, _ = _get_instances()
+    
+    for base_url in piped_apis[:5]:  # Try top 5
+        try:
+            print(f"[Piped] Trying: {base_url}")
+            resp = py_requests.get(f"{base_url}/streams/{video_id}", timeout=6)
             if resp.status_code == 200:
                 data = resp.json()
                 audio_streams = data.get('audioStreams', [])
                 if audio_streams:
-                    # Pick the highest quality m4a/mp4 stream
                     best = sorted(audio_streams, key=lambda x: x.get('bitrate', 0), reverse=True)[0]
-                    return best.get('url'), "m4a (piped)"
+                    print(f"[Piped] Success via {base_url}")
+                    return best.get('url'), "audio (piped)"
         except Exception as e:
-            print(f"[Piped Fallback] Failed {base_url}: {e}")
+            print(f"[Piped] Failed {base_url}: {e}")
             continue
     return None, None
 
+
+def resolve_invidious_fallback(video_id):
+    """Resolve stream via dynamically-fetched Invidious instances."""
+    _, invidious_apis = _get_instances()
+    
+    for base_url in invidious_apis[:5]:  # Try top 5
+        try:
+            print(f"[Invidious] Trying: {base_url}")
+            resp = py_requests.get(f"{base_url}/api/v1/videos/{video_id}", timeout=6)
+            if resp.status_code == 200:
+                data = resp.json()
+                adaptive = data.get('adaptiveFormats', [])
+                # Filter for audio-only formats
+                audio_formats = [f for f in adaptive if f.get('type', '').startswith('audio/')]
+                if audio_formats:
+                    # Sort by bitrate (highest first)
+                    best = sorted(audio_formats, key=lambda x: int(x.get('bitrate', '0').replace(',', '')), reverse=True)[0]
+                    url = best.get('url', '')
+                    if url:
+                        print(f"[Invidious] Success via {base_url}")
+                        return url, "audio (invidious)"
+        except Exception as e:
+            print(f"[Invidious] Failed {base_url}: {e}")
+            continue
+    return None, None
+
+
 def get_audio_stream_url(video_id):
     """
-    Two-Tiered Resolution:
-    1. Primarily uses yt-dlp with client spoofing (Android/MWeb) to bypass bot challenges.
-    2. Automatically fallbacks to Piped API if YouTube blocks the server IP.
+    Three-Tiered Resolution:
+    1. yt-dlp with client spoofing (fastest if not blocked)
+    2. Piped API instances (dynamically fetched)
+    3. Invidious API instances (dynamically fetched)
     """
     url = f"https://music.youtube.com/watch?v={video_id}"
     
@@ -81,17 +176,31 @@ def get_audio_stream_url(video_id):
                 'skip': ['hls', 'dash']
             }
         },
-        'socket_timeout': 7 # Faster fail in prod
+        'socket_timeout': 6
     }
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            return info.get('url'), info.get('format')
+            stream_url = info.get('url')
+            if stream_url:
+                print(f"[yt-dlp] Success for {video_id}")
+                return stream_url, info.get('format')
     except Exception as e:
-        print(f"[yt-dlp Resolution Failed] {video_id}: {e}")
-        # Tier 2: Piped Fallback
-        return resolve_piped_fallback(video_id)
+        print(f"[yt-dlp] Failed for {video_id}: {e}")
+    
+    # Tier 2: Piped Fallback
+    stream_url, fmt = resolve_piped_fallback(video_id)
+    if stream_url:
+        return stream_url, fmt
+    
+    # Tier 3: Invidious Fallback
+    stream_url, fmt = resolve_invidious_fallback(video_id)
+    if stream_url:
+        return stream_url, fmt
+    
+    print(f"[Audio] ALL TIERS FAILED for {video_id}")
+    return None, None
 
 @stream_bp.route('/search', methods=['GET'])
 @jwt_required()

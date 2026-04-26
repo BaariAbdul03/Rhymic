@@ -2,45 +2,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useMusicStore } from '../store/musicStore';
 
-// Public Piped API instances that support CORS for client-side resolution
-const PIPED_INSTANCES = [
-  "https://pipedapi.kavin.rocks",
-  "https://api-piped.mha.fi",
-  "https://piped-api.hostux.net",
-  "https://pipedapi.adminforge.de",
-  "https://pipedapi.tokhmi.xyz"
-];
-
-/**
- * Resolve audio stream URL directly from the client's browser.
- * This bypasses Render's blocked server IP entirely —
- * the user's residential IP is never flagged by YouTube.
- */
-async function resolveAudioClientSide(videoId) {
-  for (const instance of PIPED_INSTANCES) {
-    try {
-      const resp = await fetch(`${instance}/streams/${videoId}`, { 
-        signal: AbortSignal.timeout(5000) 
-      });
-      if (!resp.ok) continue;
-      
-      const data = await resp.json();
-      const audioStreams = data.audioStreams || [];
-      
-      if (audioStreams.length > 0) {
-        // Pick the highest bitrate audio stream
-        const best = audioStreams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-        console.log(`[Audio] Resolved via Piped (${instance}):`, best.quality || best.mimeType);
-        return best.url;
-      }
-    } catch (e) {
-      // Timeout or network error — try next instance
-      continue;
-    }
-  }
-  return null;
-}
-
 export const useAudio = () => {
   const audio = useMemo(() => {
     const a = new Audio();
@@ -72,10 +33,7 @@ export const useAudio = () => {
       let trackSrc;
 
       if (currentSong.source === 'online') {
-        // STRATEGY: Try server-side first (fast if not blocked), 
-        // then fall back to client-side Piped resolution.
-        
-        // Attempt 1: Server-side resolution
+        // Server-side resolution (backend uses yt-dlp → Piped → Invidious fallback chain)
         try {
           const token = localStorage.getItem('token');
           const resp = await fetch(`/api/stream/audio/${currentSong.id}`, {
@@ -88,22 +46,22 @@ export const useAudio = () => {
             }
           }
         } catch (e) {
-          console.warn("[Audio] Server-side resolution failed, trying client-side...");
-        }
-
-        // Attempt 2: Client-side Piped resolution (user's residential IP)
-        if (!trackSrc) {
-          console.log("[Audio] Resolving via client-side Piped for:", currentSong.id);
-          trackSrc = await resolveAudioClientSide(currentSong.id);
+          console.error("[Audio] Server resolution failed:", e);
         }
 
         if (!trackSrc) {
-          console.error("[Audio] All resolution methods failed for:", currentSong.id);
           useMusicStore.getState().handlePlaybackError(`Could not stream "${currentSong.title}". Try again later.`);
           return;
         }
+
+        // For online CDN URLs: disable crossOrigin so audio plays even if
+        // the CDN doesn't send CORS headers. Visualizer gets silence for
+        // online songs, but playback works reliably.
+        audio.crossOrigin = null;
       } else {
         trackSrc = currentSong.src;
+        // Local songs can use crossOrigin for visualizer support
+        audio.crossOrigin = "anonymous";
       }
 
       audio.src = trackSrc;

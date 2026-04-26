@@ -107,20 +107,34 @@ def _get_instances():
 # Initialize instances on module load (in a thread to not block startup)
 threading.Thread(target=_refresh_instances, daemon=True).start()
 
+@stream_bp.route('/debug-instances', methods=['GET'])
+def debug_instances():
+    """Debug endpoint to check health of instance cache."""
+    piped, invidious = _get_instances()
+    return jsonify({
+        "piped_count": len(piped),
+        "invidious_count": len(invidious),
+        "last_refresh": _instance_cache["last_refresh"],
+        "piped_samples": piped[:5],
+        "invidious_samples": invidious[:5]
+    })
 
 def resolve_piped_fallback(video_id):
     """Resolve stream via dynamically-fetched Piped instances."""
     piped_apis, _ = _get_instances()
     
-    for base_url in piped_apis[:5]:  # Try top 5
+    # Try more instances (up to 10) to ensure we find a working one
+    for base_url in piped_apis[:10]:
         try:
             print(f"[Piped] Trying: {base_url}")
-            resp = py_requests.get(f"{base_url}/streams/{video_id}", timeout=6)
+            # Use a slightly longer timeout for slower instances
+            resp = py_requests.get(f"{base_url}/streams/{video_id}", timeout=8)
             if resp.status_code == 200:
                 data = resp.json()
                 audio_streams = data.get('audioStreams', [])
                 if audio_streams:
-                    best = sorted(audio_streams, key=lambda x: x.get('bitrate', 0), reverse=True)[0]
+                    # Prefer m4a/mp4 for better browser compatibility
+                    best = sorted(audio_streams, key=lambda x: (x.get('mimeType', '').startswith('audio/mp4'), x.get('bitrate', 0)), reverse=True)[0]
                     print(f"[Piped] Success via {base_url}")
                     return best.get('url'), "audio (piped)"
         except Exception as e:
@@ -128,22 +142,22 @@ def resolve_piped_fallback(video_id):
             continue
     return None, None
 
-
 def resolve_invidious_fallback(video_id):
     """Resolve stream via dynamically-fetched Invidious instances."""
     _, invidious_apis = _get_instances()
     
-    for base_url in invidious_apis[:5]:  # Try top 5
+    # Try more instances (up to 10)
+    for base_url in invidious_apis[:10]:
         try:
             print(f"[Invidious] Trying: {base_url}")
-            resp = py_requests.get(f"{base_url}/api/v1/videos/{video_id}", timeout=6)
+            resp = py_requests.get(f"{base_url}/api/v1/videos/{video_id}", timeout=8)
             if resp.status_code == 200:
                 data = resp.json()
                 adaptive = data.get('adaptiveFormats', [])
                 # Filter for audio-only formats
                 audio_formats = [f for f in adaptive if f.get('type', '').startswith('audio/')]
                 if audio_formats:
-                    # Sort by bitrate (highest first)
+                    # Sort by bitrate
                     best = sorted(audio_formats, key=lambda x: int(x.get('bitrate', '0').replace(',', '')), reverse=True)[0]
                     url = best.get('url', '')
                     if url:
@@ -154,17 +168,16 @@ def resolve_invidious_fallback(video_id):
             continue
     return None, None
 
-
 def get_audio_stream_url(video_id):
     """
     Three-Tiered Resolution:
-    1. yt-dlp with client spoofing (fastest if not blocked)
-    2. Piped API instances (dynamically fetched)
-    3. Invidious API instances (dynamically fetched)
+    1. yt-dlp with aggressive spoofing (iOS/Android/Web)
+    2. Piped API instances (dynamic)
+    3. Invidious API instances (dynamic)
     """
     url = f"https://music.youtube.com/watch?v={video_id}"
     
-    # Tier 1: yt-dlp with spoofing
+    # Tier 1: yt-dlp with updated spoofing (iOS is currently less blocked)
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
@@ -172,11 +185,11 @@ def get_audio_stream_url(video_id):
         'noplaylist': True,
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'web_embedded'],
+                'player_client': ['ios', 'android', 'web_embedded'],
                 'skip': ['hls', 'dash']
             }
         },
-        'socket_timeout': 6
+        'socket_timeout': 5
     }
     
     try:
@@ -187,19 +200,19 @@ def get_audio_stream_url(video_id):
                 print(f"[yt-dlp] Success for {video_id}")
                 return stream_url, info.get('format')
     except Exception as e:
-        print(f"[yt-dlp] Failed for {video_id}: {e}")
+        print(f"[yt-dlp] Failed: {e}")
     
-    # Tier 2: Piped Fallback
+    # Tier 2: Piped Fallback (Resolution via community instances)
     stream_url, fmt = resolve_piped_fallback(video_id)
     if stream_url:
         return stream_url, fmt
     
-    # Tier 3: Invidious Fallback
+    # Tier 3: Invidious Fallback (Resolution via community instances)
     stream_url, fmt = resolve_invidious_fallback(video_id)
     if stream_url:
         return stream_url, fmt
     
-    print(f"[Audio] ALL TIERS FAILED for {video_id}")
+    print(f"[Audio] ALL RESOLUTION TIERS FAILED for {video_id}")
     return None, None
 
 @stream_bp.route('/search', methods=['GET'])

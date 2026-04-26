@@ -3,6 +3,7 @@ set -o errexit
 
 echo "Installing Python Dependencies..."
 pip install -r requirements.txt
+pip install --upgrade yt-dlp
 
 echo "Running Database Migrations..."
 flask db upgrade

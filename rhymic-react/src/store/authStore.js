@@ -144,6 +144,32 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  updateProfile: async (data) => {
+    set({ error: null });
+    try {
+      const response = await authApi.updateProfile(data);
+      if (response.data?.user) {
+        set({ user: response.data.user });
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        return true;
+      }
+    } catch (err) {
+      set({ error: err.response?.data?.message || 'Update failed.' });
+      return false;
+    }
+  },
+
+  changePassword: async (oldPassword, newPassword) => {
+    set({ error: null });
+    try {
+      await authApi.changePassword(oldPassword, newPassword);
+      return true;
+    } catch (err) {
+      set({ error: err.response?.data?.message || err.response?.data?.error || 'Password change failed.' });
+      return false;
+    }
+  },
+
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

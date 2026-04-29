@@ -20,17 +20,12 @@ class ThumbnailCache:
     """
 
     def __init__(self, cache_dir=None):
-        try:
-            if cache_dir is None:
-                # Always use an absolute path relative to this file's location
-                base_dir = Path(__file__).parent.parent
-                cache_dir = str(base_dir / 'data' / 'cache' / 'thumbnails')
-            self.cache_dir = cache_dir
-            os.makedirs(self.cache_dir, exist_ok=True)
-            self.enabled = True
-        except Exception as e:
-            print(f"[Cache] Initialization failed (Read-only?): {e}")
-            self.enabled = False
+        if cache_dir is None:
+            # Always use an absolute path relative to this file's location
+            base_dir = Path(__file__).parent.parent
+            cache_dir = str(base_dir / 'data' / 'cache' / 'thumbnails')
+        self.cache_dir = cache_dir
+        os.makedirs(self.cache_dir, exist_ok=True)
 
     def _stable_key(self, url):
         """
@@ -62,28 +57,24 @@ class ThumbnailCache:
 
     def get_cached_path(self, url):
         """Returns the absolute local path if cached, else None."""
-        if not self.enabled: return None
-        try:
-            file_hash = self._get_hash(url)
-            file_path = os.path.join(self.cache_dir, file_hash)
+        file_hash = self._get_hash(url)
+        file_path = os.path.join(self.cache_dir, file_hash)
 
-            if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-                return str(Path(file_path).absolute())
-        except Exception:
-            pass
+        if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+            return str(Path(file_path).absolute())
         return None
 
     def save_to_cache(self, url, response):
         """
         Saves a requests response stream to the cache atomically.
+        Uses UUID-based temp files to prevent Windows file-lock collisions
+        when multiple threads download different songs concurrently.
         """
-        if not self.enabled: return None
-        
-        try:
-            file_hash = self._get_hash(url)
-            file_path = os.path.join(self.cache_dir, file_hash)
-            temp_path = os.path.join(self.cache_dir, f"{file_hash}.{uuid.uuid4()}.tmp")
+        file_hash = self._get_hash(url)
+        file_path = os.path.join(self.cache_dir, file_hash)
+        temp_path = os.path.join(self.cache_dir, f"{file_hash}.{uuid.uuid4()}.tmp")
 
+        try:
             total_bytes = 0
             with open(temp_path, 'wb') as f:
                 if isinstance(response, bytes):
@@ -96,14 +87,14 @@ class ThumbnailCache:
 
             if total_bytes == 0:
                 print(f"[Cache] Empty image skipped: {url[:80]}")
-                if os.path.exists(temp_path): os.remove(temp_path)
+                os.remove(temp_path)
                 return None
 
             # Atomic rename — only happens on success with non-zero content
             os.replace(temp_path, file_path)
             return str(Path(file_path).absolute())
         except Exception as e:
-            if 'temp_path' in locals() and os.path.exists(temp_path):
+            if os.path.exists(temp_path):
                 try:
                     os.remove(temp_path)
                 except Exception:

@@ -6,20 +6,10 @@ import { Camera, Mail, User } from 'lucide-react';
 const Profile = () => {
   const user = useAuthStore((state) => state.user);
   const fetchUser = useAuthStore((state) => state.fetchUser);
-  const uploadProfilePic = useAuthStore((state) => state.uploadProfilePic);
   
-  const fileInputRef = useRef(null);
-
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      await uploadProfilePic(file);
-    }
-  };
 
   if (!user) return <div style={{padding: 40, textAlign:'center'}}>Loading Profile...</div>;
 
@@ -30,26 +20,15 @@ const Profile = () => {
   return (
     <div className={styles.profileContainer}>
       <div className={styles.card}>
-        <div className={styles.avatarWrapper} onClick={() => fileInputRef.current.click()}>
+        <div className={styles.avatarWrapper} style={{ cursor: 'default' }}>
           <img 
             src={profilePic} 
             alt="Profile" 
             className={styles.avatar} 
             onError={(e) => { e.target.onerror = null; e.target.src = PLACEHOLDER_IMG; }}
           />
-          <div className={styles.avatarOverlay}>
-            <Camera className={styles.editIcon} />
-          </div>
         </div>
         
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          style={{ display: 'none' }} 
-          accept="image/*"
-          onChange={handleFileChange}
-        />
-
         <h1 className={styles.name}>{user.name}</h1>
         <p className={styles.email}>{user.email}</p>
 

@@ -6,8 +6,7 @@ import { useMusicStore } from '../store/musicStore';
 
 const Home = () => {
   const playlists = useMusicStore((state) => state.playlists);
-  const systemPlaylists = playlists.filter(p => p.is_system);
-
+  
   useEffect(() => {
     // Scroll to top on mount
     window.scrollTo(0, 0);

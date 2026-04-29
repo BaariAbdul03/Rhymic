@@ -1,12 +1,12 @@
 services:
   # ----------------------------------------
-  # Rhymic Unified Service (Flask + Node Resolver)
+  # Flask Backend Service (Serves SPA from /dist)
   # ----------------------------------------
   - type: web
     name: rhymic-backend
     env: python
     buildCommand: ./build.sh
-    startCommand: ./start.sh
+    startCommand: gunicorn app:app --workers 2 --timeout 120
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
@@ -26,6 +26,4 @@ services:
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_SERVICE_KEY
-        sync: false
-      - key: RESOLVER_API_KEY
         sync: false

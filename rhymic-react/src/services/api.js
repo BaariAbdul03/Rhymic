@@ -41,7 +41,9 @@ export const authApi = {
     headers: { Authorization: `Bearer ${tempToken}` }
   }),
   setup2FA: () => api.post('/2fa/setup'),
-  enable2FA: (code) => api.post('/2fa/enable', { code })
+  enable2FA: (code) => api.post('/2fa/enable', { code }),
+  updateProfile: (data) => api.patch('/user/update', data),
+  changePassword: (old_password, new_password) => api.post('/user/change-password', { old_password, new_password })
 };
 
 export const songsApi = {

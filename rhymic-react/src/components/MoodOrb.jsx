@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+/* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
 import styles from './MoodOrb.module.css';

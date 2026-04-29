@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+/* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from './SmartDJ.module.css';
 import { useMusicStore } from '../store/musicStore';

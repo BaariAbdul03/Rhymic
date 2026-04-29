@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+/* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
 import toast from 'react-hot-toast';

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+/* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Flame, Globe, Play, Plus, SignalHigh, Clock } from 'lucide-react';
 import { streamApi } from '../services/api';
@@ -59,7 +60,7 @@ const OnlineSearch = () => {
       if (res.data && res.data.length > 0) {
         setQueue(res.data);
       }
-    } catch (err) {
+    } catch {
       console.error("Failed to fetch related songs, keeping search results as queue");
       // Fallback: use the original pool (search results or trending)
       setQueue(pool);

@@ -33,7 +33,7 @@ The core of the React application's logic is cleanly separated from the DOM and 
    - Handles the absolute logic for fetching from the backend API (`fetchSongs`, `fetchPlaylists`).
    - Caches backend AI generations (e.g., `aiCategories`) to prevent infinite UI re-rendering.
 2. **`uiStore.js`**: Strictly manages UI boolean toggles for absolute/fixed layers (e.g., `isSidebarOpen`, `isRightPanelOpen` (Queue drawer), `isPlayerOpen` (Mobile Player)).
-3. **`authStore.js`**: Pure authentication logic, local-storage token persistence, and login/logout REST calls.
+3. **`authStore.js`**: Pure authentication logic, local-storage token persistence, and login/logout REST calls. Now houses centralized identity management (`updateProfile`, `changePassword`, `uploadProfilePic`).
 
 ---
 
@@ -78,6 +78,10 @@ When working on the application, please be aware of these foundational structura
 11. **Multi-Step Auth UI & 2FA (Phase 22):** The authentication flow is a multi-step UI supporting login, registration, TOTP 2FA verification, and a "Forgot Password" code-based recovery mechanism. Do not revert to the single-page basic auth form.
 12. **Smart DJ Fallback (Phase 22):** The AI-driven mood engine has been replaced with a high-performance rotational color cycle for better reliability. The Smart DJ interface explicitly uses the `<SongCover />` component to resolve image loading failures.
 13. **Local Database & Clean State (Phase 22):** External streaming data has been purged. The database relies strictly on local metadata and direct YouTube Music integrations. Do not reintroduce stale configurations or orphaned components.
+14. **2FA Dependency Stability (Phase 23):** Resolved critical backend crashes by explicitly installing `google-genai` and `psycopg2-binary` (for PostgreSQL compatibility). The AI metadata fixer and Smart DJ are strictly dependent on the correct import of the `genai` client.
+15. **Local Files Overhaul (Phase 23):** Redesigned the `UploadMetadata.jsx` page to support bulk uploads, "Play All", "Shuffle All", and individual "Add to Queue" actions. These tracks are session-only and managed via Blob URLs.
+16. **Settings Centralization (Phase 23):** Consolidated all user-identity (Avatar/Name) and security (Password/2FA) management into the `Settings.jsx` page. Legacy upload triggers in `Profile.jsx` have been removed to prevent state desync.
+17. **CSS Masking Standards (Phase 23):** To support non-WebKit browsers (Firefox) and resolve lint warnings, all gradient text effects MUST include the standard `background-clip: text` property alongside the vendor-prefixed `-webkit-background-clip`.
 
 ---
 

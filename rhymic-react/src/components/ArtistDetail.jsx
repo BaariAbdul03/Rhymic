@@ -56,7 +56,7 @@ const ArtistDetail = () => {
     
     fetchArtistProfile();
     window.scrollTo(0, 0);
-  }, [decodedName]);
+  }, [decodedName, artistSongs]);
 
   if (!artistSongs.length && !loading) {
     return (

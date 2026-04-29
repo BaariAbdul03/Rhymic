@@ -281,3 +281,56 @@ def upload_profile_pic():
         except Exception as e:
              print(f"Upload Error: {e}")
              return jsonify({"message": "Upload failed"}), 500
+@auth_bp.route('/user/update', methods=['PATCH'])
+@jwt_required()
+def update_profile():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+        
+    data = request.get_json()
+    if not data:
+        return jsonify({"message": "No data provided"}), 400
+        
+    if 'name' in data:
+        if not is_valid_username(data['name']):
+            return jsonify({"message": "Invalid username format"}), 400
+        user.name = data['name']
+        
+    try:
+        db.session.commit()
+        return jsonify({"message": "Profile updated successfully", "user": user.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Failed to update profile"}), 500
+
+@auth_bp.route('/user/change-password', methods=['POST'])
+@jwt_required()
+def change_password():
+    user_id = get_jwt_identity()
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+        
+    data = request.get_json()
+    old_password = data.get('old_password')
+    new_password = data.get('new_password')
+    
+    if not old_password or not new_password:
+        return jsonify({"message": "Old and new passwords required"}), 400
+        
+    if not bcrypt.check_password_hash(user.password, old_password):
+        return jsonify({"message": "Incorrect old password"}), 400
+        
+    pwd_err = validate_password(new_password)
+    if pwd_err:
+        return jsonify({"error": pwd_err}), 400
+        
+    user.password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+    try:
+        db.session.commit()
+        return jsonify({"message": "Password changed successfully"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Failed to change password"}), 500

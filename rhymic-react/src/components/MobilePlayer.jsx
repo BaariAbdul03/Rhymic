@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+/* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, SkipBack, SkipForward, Play, Pause, Shuffle, Repeat, ListMusic, Volume2, VolumeX, Activity, Sliders } from 'lucide-react';
 import { useMusicStore } from '../store/musicStore';

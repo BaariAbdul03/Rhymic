@@ -1,6 +1,7 @@
 // src/components/Login.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+/* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, Eye, EyeOff, CheckCircle, KeyRound, ShieldAlert } from 'lucide-react';
 import styles from './Auth.module.css';

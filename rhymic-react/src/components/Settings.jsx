@@ -1,147 +1,300 @@
-import React, { useState } from 'react';
-import { Shield, ShieldCheck, ShieldAlert, Key } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { 
+  Shield, 
+  ShieldCheck, 
+  ShieldAlert, 
+  Key, 
+  User as UserIcon, 
+  Camera, 
+  Lock, 
+  Mail,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
+import styles from './Settings.module.css';
 
 const Settings = () => {
-  const { user, setup2FA, enable2FA } = useAuthStore();
-  const [setupData, setSetupData] = useState(null); // { secret, qr_code }
-  const [code, setCode] = useState('');
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const { user, setup2FA, enable2FA, updateProfile, uploadProfilePic, changePassword } = useAuthStore();
+  const fileInputRef = useRef(null);
 
-  const handleSetup = async () => {
-    setLoading(true);
-    setError(null);
-    const data = await setup2FA();
-    if (data) {
-      setSetupData(data);
-    } else {
-      setError("Failed to initiate 2FA setup");
-    }
-    setLoading(false);
+  // Profile State
+  const [name, setName] = useState(user?.name || '');
+  const [profileLoading, setProfileLoading] = useState(false);
+
+  // Security / 2FA State
+  const [setupData, setSetupData] = useState(null);
+  const [twoFACode, setTwoFACode] = useState('');
+  const [securityLoading, setSecurityLoading] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  
+  // Password State
+  const [passwords, setPasswords] = useState({ old: '', new: '', confirm: '' });
+
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    if (name === user.name) return;
+    setProfileLoading(true);
+    const success = await updateProfile({ name });
+    if (success) toast.success("Profile updated!");
+    setProfileLoading(false);
   };
 
-  const handleVerify = async () => {
-    setLoading(true);
-    setError(null);
-    const success = await enable2FA(code);
-    if (!success) {
-      setError("Invalid 6-digit code. Try again.");
-    } else {
-      setSetupData(null);
-      setCode('');
+  const handleAvatarClick = () => fileInputRef.current.click();
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setProfileLoading(true);
+    const success = await uploadProfilePic(file);
+    if (success) toast.success("Profile picture updated!");
+    else toast.error("Failed to upload image.");
+    setProfileLoading(false);
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (passwords.new !== passwords.confirm) {
+      toast.error("Passwords do not match");
+      return;
     }
-    setLoading(false);
+    setSecurityLoading(true);
+    const success = await changePassword(passwords.old, passwords.new);
+    if (success) {
+      toast.success("Password changed successfully!");
+      setShowPasswordForm(false);
+      setPasswords({ old: '', new: '', confirm: '' });
+    }
+    setSecurityLoading(false);
+  };
+
+  const handle2FASetup = async () => {
+    setSecurityLoading(true);
+    const data = await setup2FA();
+    if (data) setSetupData(data);
+    setSecurityLoading(false);
+  };
+
+  const handle2FAVerify = async () => {
+    setSecurityLoading(true);
+    const success = await enable2FA(twoFACode);
+    if (success) {
+      toast.success("2FA Enabled!");
+      setSetupData(null);
+    }
+    setSecurityLoading(false);
   };
 
   if (!user) return null;
 
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', color: 'var(--text-primary)' }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '8px', fontWeight: 'bold' }}>Settings</h1>
-      <p style={{ color: 'var(--text-secondary)', marginBottom: '40px' }}>Manage your account security and preferences.</p>
-      
-      <div style={{ backgroundColor: 'var(--bg-secondary)', padding: '32px', borderRadius: '16px', marginBottom: '24px', border: '1px solid var(--border-color)', boxShadow: 'var(--card-shadow)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
-          <Shield size={24} color="var(--accent-primary)" />
-          <h2 style={{ fontSize: '1.4rem', margin: 0 }}>Security</h2>
+    <motion.div 
+      className={styles.container}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <header className={styles.header}>
+        <h1>Settings</h1>
+        <p>Manage your account identity and security preferences.</p>
+      </header>
+
+      {/* --- Profile Section --- */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <UserIcon size={22} color="var(--accent-primary)" />
+          <h2>Profile Details</h2>
         </div>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h3 style={{ fontSize: '1.1rem', margin: '0 0 8px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Two-Factor Authentication (2FA)
-              {user.is_two_factor_enabled ? <ShieldCheck size={18} color="#4cd964" /> : <ShieldAlert size={18} color="#ff9500" />}
-            </h3>
-            <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem', maxWidth: '400px' }}>
-              {user.is_two_factor_enabled 
-                ? "Your account is protected. You will be required to enter a 6-digit code when logging in."
-                : "Add an extra layer of security to your account by using an authenticator app like Google Authenticator."}
-            </p>
+
+        <div className={styles.profileGrid}>
+          <div className={styles.avatarSection}>
+            <div className={styles.avatarContainer}>
+              <img 
+                src={user.profile_pic || '/assets/default_avatar.png'} 
+                alt={user.name} 
+                className={styles.avatar} 
+              />
+              <div className={styles.avatarOverlay} onClick={handleAvatarClick}>
+                <Camera size={24} />
+                <span>Change</span>
+              </div>
+            </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              hidden 
+              accept="image/*" 
+              onChange={handleFileChange} 
+            />
           </div>
-          
-          {!user.is_two_factor_enabled && !setupData && (
+
+          <form className={styles.formGroup} onSubmit={handleProfileUpdate}>
+            <div className={styles.inputField}>
+              <label>Display Name</label>
+              <input 
+                type="text" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
+                placeholder="Your Name"
+              />
+            </div>
+            <div className={styles.inputField}>
+              <label>Email Address</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', opacity: 0.6 }}>
+                <Mail size={18} />
+                <span>{user.email}</span>
+                <CheckCircle2 size={14} color="#4cd964" />
+              </div>
+            </div>
             <button 
-              onClick={handleSetup}
-              disabled={loading}
-              style={{
-                padding: '10px 20px',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: 'var(--accent-primary)',
-                color: '#000',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                opacity: loading ? 0.7 : 1
-              }}
+              type="submit" 
+              className={styles.saveBtn}
+              disabled={profileLoading || name === user.name}
             >
+              {profileLoading ? 'Saving...' : 'Save Changes'}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      {/* --- Security Section --- */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <Shield size={22} color="var(--accent-primary)" />
+          <h2>Security & Privacy</h2>
+        </div>
+
+        {/* Change Password Toggle */}
+        <div className={styles.securityItem}>
+          <div className={styles.securityInfo}>
+            <h3>Account Password</h3>
+            <p>Update your password regularly to keep your account secure.</p>
+          </div>
+          <button 
+            className={styles.actionBtn} 
+            onClick={() => setShowPasswordForm(!showPasswordForm)}
+          >
+            {showPasswordForm ? 'Cancel' : 'Change Password'}
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {showPasswordForm && (
+            <motion.form 
+              className={styles.setupCard}
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              onSubmit={handlePasswordChange}
+            >
+              <div className={styles.formGroup}>
+                <div className={styles.inputField}>
+                  <label>Current Password</label>
+                  <input 
+                    type="password" 
+                    required 
+                    value={passwords.old}
+                    onChange={e => setPasswords({...passwords, old: e.target.value})}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className={styles.inputField}>
+                    <label>New Password</label>
+                    <input 
+                      type="password" 
+                      required 
+                      value={passwords.new}
+                      onChange={e => setPasswords({...passwords, new: e.target.value})}
+                    />
+                  </div>
+                  <div className={styles.inputField}>
+                    <label>Confirm Password</label>
+                    <input 
+                      type="password" 
+                      required 
+                      value={passwords.confirm}
+                      onChange={e => setPasswords({...passwords, confirm: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <button type="submit" className={styles.saveBtn} disabled={securityLoading}>
+                  {securityLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
+
+        {/* 2FA Item */}
+        <div className={styles.securityItem}>
+          <div className={styles.securityInfo}>
+            <h3 style={{ color: user.is_two_factor_enabled ? '#4cd964' : 'inherit' }}>
+              Two-Factor Authentication
+              {user.is_two_factor_enabled ? <ShieldCheck size={18} /> : <ShieldAlert size={18} color="#ff9500" />}
+            </h3>
+            <p>Add an extra layer of security using an authenticator app.</p>
+          </div>
+          {!user.is_two_factor_enabled && !setupData && (
+            <button className={`${styles.actionBtn} ${styles.accentBtn}`} onClick={handle2FASetup}>
               Enable 2FA
             </button>
           )}
-
           {user.is_two_factor_enabled && (
-            <div style={{ color: '#4cd964', fontWeight: 'bold', border: '1px solid #4cd964', padding: '8px 16px', borderRadius: '8px', backgroundColor: 'rgba(76,217,100,0.1)' }}>
-              Enabled
+            <div className={styles.success}>
+              <CheckCircle2 size={16} /> Verified
             </div>
           )}
         </div>
 
-        {setupData && !user.is_two_factor_enabled && (
-          <div style={{ marginTop: '24px', padding: '24px', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px solid var(--accent-primary)' }}>
-            <h4 style={{ margin: '0 0 16px 0', color: 'var(--accent-primary)' }}>Setup Instructions</h4>
-            <ol style={{ paddingLeft: '20px', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>
-              <li>Download Google Authenticator or Authy on your mobile device.</li>
-              <li>Scan the QR code below or enter the setup key manually.</li>
-              <li>Enter the 6-digit code generated by the app to verify.</li>
-            </ol>
-            
-            <div style={{ display: 'flex', gap: '32px', alignItems: 'center', marginTop: '24px' }}>
-              <div style={{ background: '#fff', padding: '16px', borderRadius: '12px' }}>
-                <img src={setupData.qr_code} alt="2FA QR Code" width={150} height={150} style={{ display: 'block' }} />
-              </div>
+        {/* 2FA Setup Flow */}
+        <AnimatePresence>
+          {setupData && (
+            <motion.div 
+              className={styles.setupCard}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <h4 style={{ margin: '0 0 12px 0' }}>Authenticator Setup</h4>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                1. Scan the QR code or enter the key: <code>{setupData.secret}</code>
+              </p>
               
-              <div style={{ flex: 1 }}>
-                <p style={{ margin: '0 0 8px 0', fontSize: '0.8.5rem', color: 'var(--text-secondary)' }}>Setup Key: <strong>{setupData.secret}</strong></p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Key size={18} color="var(--text-secondary)" />
-                  <input 
-                    type="text" 
-                    placeholder="Enter 6-digit code" 
-                    value={code}
-                    onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                    style={{
-                      padding: '10px 16px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--border-color)',
-                      backgroundColor: 'var(--bg-elevated)',
-                      color: 'var(--text-primary)',
-                      flex: 1
-                    }}
-                  />
-                  <button 
-                    onClick={handleVerify}
-                    disabled={code.length !== 6 || loading}
-                    style={{
-                      padding: '10px 24px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      backgroundColor: 'white',
-                      color: 'black',
-                      fontWeight: 'bold',
-                      cursor: code.length === 6 ? 'pointer' : 'not-allowed',
-                      opacity: code.length === 6 ? 1 : 0.5
-                    }}
-                  >
-                    Verify
-                  </button>
+              <div className={styles.qrContainer}>
+                <div className={styles.qrCode}>
+                  <img src={setupData.qr_code} alt="QR" width={140} height={140} />
                 </div>
-                {error && <p style={{ color: '#ff4d4d', fontSize: '0.85rem', margin: '8px 0 0 0' }}>{error}</p>}
+                <div className={styles.qrDetails}>
+                  <div className={styles.inputField}>
+                    <label>Verification Code</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input 
+                        type="text" 
+                        placeholder="000000" 
+                        maxLength={6}
+                        value={twoFACode}
+                        onChange={e => setTwoFACode(e.target.value.replace(/\D/g, ''))}
+                        style={{ flex: 1, letterSpacing: '4px', textAlign: 'center', fontSize: '1.2rem' }}
+                      />
+                      <button 
+                        className={styles.saveBtn} 
+                        style={{ marginTop: 0 }}
+                        onClick={handle2FAVerify}
+                        disabled={twoFACode.length !== 6 || securityLoading}
+                      >
+                        Verify
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </section>
+
+    </motion.div>
   );
 };
 

@@ -117,9 +117,6 @@ export const useAudio = () => {
       }
     };
 
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('ended', handleEnded);
     const handlePlaybackError = () => {
       const { handlePlaybackError: storeErrorHandler, currentSong } = useMusicStore.getState();
       if (currentSong) {

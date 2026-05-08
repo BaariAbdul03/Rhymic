@@ -153,7 +153,7 @@ const Login = ({ initialSignup = false }) => {
           transition={{ type: "spring", stiffness: 240, damping: 24 }}
         >
           <div className={styles.logoArea}>
-            <h1 className={styles.logoText}>Rhymic<span className={styles.logoAccent}>.</span></h1>
+            <h1 className={styles.logoText}>RhyMic<span className={styles.logoAccent}>.</span></h1>
           </div>
 
           <h2 className={styles.title}>
@@ -164,7 +164,7 @@ const Login = ({ initialSignup = false }) => {
             {mode === 'tfa' && "Two-Step Verification"}
           </h2>
           <p className={styles.subtitle}>
-            {mode === 'login' && "Log in to continue to Rhymic"}
+            {mode === 'login' && "Log in to continue to RhyMic"}
             {mode === 'signup' && "Join the golden standard of streaming"}
             {mode === 'forgot' && "Enter your email to receive a 6-digit PIN"}
             {mode === 'reset' && "Enter the PIN sent to your email"}

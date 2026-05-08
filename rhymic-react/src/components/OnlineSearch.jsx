@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 /* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Flame, Globe, Play, Plus, SignalHigh, Clock } from 'lucide-react';
+import { Search, Flame, Globe, Play, SignalHigh, Clock } from 'lucide-react';
 import { streamApi } from '../services/api';
 import { useMusicStore } from '../store/musicStore';
 import SongCover from './SongCover';

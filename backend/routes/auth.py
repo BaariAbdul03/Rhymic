@@ -185,7 +185,7 @@ def setup_2fa():
         
     secret = pyotp.random_base32()
     totp = pyotp.TOTP(secret)
-    uri = totp.provisioning_uri(name=user.email, issuer_name="Rhymic")
+    uri = totp.provisioning_uri(name=user.email, issuer_name="RhyMic")
     
     # Generate QR Code image data
     qr = qrcode.make(uri)

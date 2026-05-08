@@ -10,26 +10,30 @@ import SongCover from './SongCover';
 import styles from './ProgressBar.module.css';
 
 const ProgressBar = () => {
-  const { 
-    currentSong, 
-    isPlaying, 
-    togglePlay, 
-    nextSong, 
-    prevSong,
-    currentTime,
-    duration,
-    seek,
-    volume,
-    setVolume,
-    shuffle,
-    toggleShuffle,
-    repeat,
-    toggleRepeat,
-    toggleLike,
-    likedSongs
-  } = useMusicStore();
+  const currentSong = useMusicStore((state) => state.currentSong);
+  const isPlaying = useMusicStore((state) => state.isPlaying);
+  const togglePlay = useMusicStore((state) => state.togglePlay);
+  const nextSong = useMusicStore((state) => state.nextSong);
+  const prevSong = useMusicStore((state) => state.prevSong);
+  const currentTime = useMusicStore((state) => state.currentTime);
+  const duration = useMusicStore((state) => state.duration);
+  const seek = useMusicStore((state) => state.seek);
+  const volume = useMusicStore((state) => state.volume);
+  const setVolume = useMusicStore((state) => state.setVolume);
+  const shuffle = useMusicStore((state) => state.shuffle);
+  const toggleShuffle = useMusicStore((state) => state.toggleShuffle);
+  const repeat = useMusicStore((state) => state.repeat);
+  const toggleRepeat = useMusicStore((state) => state.toggleRepeat);
+  const toggleLike = useMusicStore((state) => state.toggleLike);
+  const likedSongs = useMusicStore((state) => state.likedSongs);
 
-  const { togglePlayer, toggleRightPanel, isRightPanelOpen, toggleVisualizer, isVisualizerOpen, toggleAudioLab, isAudioLabOpen } = useUIStore();
+  const togglePlayer = useUIStore((state) => state.togglePlayer);
+  const toggleRightPanel = useUIStore((state) => state.toggleRightPanel);
+  const isRightPanelOpen = useUIStore((state) => state.isRightPanelOpen);
+  const toggleVisualizer = useUIStore((state) => state.toggleVisualizer);
+  const isVisualizerOpen = useUIStore((state) => state.isVisualizerOpen);
+  const toggleAudioLab = useUIStore((state) => state.toggleAudioLab);
+  const isAudioLabOpen = useUIStore((state) => state.isAudioLabOpen);
   
   // Custom hook to manage the actual HTML5 Audio element
   useAudio();
@@ -81,10 +85,6 @@ const ProgressBar = () => {
                   alt={displaySong.title} 
                   size="small"
                   className={styles.coverImage}
-                  initial={{ opacity: 0, scale: 0.8, rotate: -10 }}
-                  animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                  exit={{ opacity: 0, scale: 0.8, rotate: 10 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 />
               </AnimatePresence>
             </div>

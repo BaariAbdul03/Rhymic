@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
-import { songsApi, playlistsApi, likesApi, moodApi } from '../services/api';
+import { songsApi, playlistsApi, likesApi } from '../services/api';
 
 export const useMusicStore = create((set, get) => ({
   songs: [],
@@ -9,7 +9,7 @@ export const useMusicStore = create((set, get) => ({
   likedSongsLoading: false,
   playlists: [],
   currentPlaylist: null,
-  currentMood: "Euphoric", // Starts with Rhymic Gold
+  currentMood: "Euphoric", // Starts with RhyMic Gold
   moodIndex: 0,
   queue: [], // Explicit queue array
   originalQueue: [], // For restoring order when shuffle is off
@@ -232,7 +232,7 @@ export const useMusicStore = create((set, get) => ({
   // --- Player Controls ---
   setSongs: (songs) => {
     const normalizedSongs = songs.map(s => s.source === 'online' ? { ...s, cover: (s.cover || s.thumbnail || "").replace(/=s\d+$/, "") + "=s0" } : s);
-    set({ songs: normalizedSongs, queue: normalizedSongs, originalQueue: normalizedSongs });
+    set({ queue: normalizedSongs, originalQueue: normalizedSongs });
   },
   setQueue: (newQueue) => set({ queue: newQueue, originalQueue: newQueue }),
   setAudioElement: (audio) => set({ audioElement: audio }),
@@ -248,23 +248,27 @@ export const useMusicStore = create((set, get) => ({
     }
   },
 
-  setCurrentSong: async (song) => {
+  setCurrentSong: (song) => {
     const { isPlaying } = get();
-    if (isPlaying) await get()._triggerCrossfade(0.3, 0);
+    // Start fading out old song (non-blocking)
+    if (isPlaying) get()._triggerCrossfade(0.15, 0);
     
+    // Switch song immediately
     set({ currentSong: song, isPlaying: true, currentTime: 0 });
     if (song) get().fetchSongMood(song);
     
-    get()._triggerCrossfade(0.4, 1);
+    // Start fading in new song
+    get()._triggerCrossfade(0.25, 1);
   },
 
   togglePlay: () => {
     const { isPlaying } = get();
     if (isPlaying) {
-      get()._triggerCrossfade(0.3, 0).then(() => set({ isPlaying: false }));
+      // Snappy fade out then pause
+      get()._triggerCrossfade(0.15, 0).then(() => set({ isPlaying: false }));
     } else {
       set({ isPlaying: true });
-      get()._triggerCrossfade(0.3, 1);
+      get()._triggerCrossfade(0.2, 1); // Fast fade in on resume
     }
   },
 
@@ -302,11 +306,11 @@ export const useMusicStore = create((set, get) => ({
     const nextIndex = (currentIndex + 1) % queue.length;
     const nextSongObj = queue[nextIndex];
     
-    if (isPlaying) await get()._triggerCrossfade(0.3, 0);
+    if (isPlaying) get()._triggerCrossfade(0.15, 0); // Start fade out
     
     set({ currentSong: nextSongObj, isPlaying: true, currentTime: 0 });
     get().fetchSongMood(nextSongObj);
-    get()._triggerCrossfade(0.5, 1);
+    get()._triggerCrossfade(0.3, 1); // Start fade in
   },
   
   prevSong: async () => { 
@@ -317,11 +321,11 @@ export const useMusicStore = create((set, get) => ({
     const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
     const prevSongObj = queue[prevIndex];
 
-    if (isPlaying) await get()._triggerCrossfade(0.3, 0);
+    if (isPlaying) get()._triggerCrossfade(0.15, 0);
 
     set({ currentSong: prevSongObj, isPlaying: true, currentTime: 0 });
     get().fetchSongMood(prevSongObj);
-    get()._triggerCrossfade(0.5, 1);
+    get()._triggerCrossfade(0.3, 1);
   },
   
   playNext: (song) => set((state) => {

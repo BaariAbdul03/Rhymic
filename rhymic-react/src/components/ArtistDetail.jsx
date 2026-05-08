@@ -115,7 +115,7 @@ const ArtistDetail = () => {
                   <span className={styles.trackNum}>{index + 1}</span>
                   <SongCover 
                     src={song.cover} 
-                    alt="cover" 
+                    alt={song.title} 
                     size="small" 
                     className={styles.trackCover} 
                   />
@@ -136,7 +136,7 @@ const ArtistDetail = () => {
              />
              <div className={styles.bioContent}>
                <p className={styles.bioText}>
-                 {decodedName} is a featured artist on Rhymic. Explore their discography and discover top hits.
+                 {decodedName} is a featured artist on RhyMic. Explore their discography and discover top hits.
                </p>
              </div>
           </div>

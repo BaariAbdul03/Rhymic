@@ -30,9 +30,19 @@ yarn-error.log*
 .gemini/
 tmp/
 brain/
+scratch/
 backend/data/cache/
 
 # App Specific
 # User uploads (these shouldn't be in Git if using cloud storage later)
 rhymic-react/public/assets/users/*
 !rhymic-react/public/assets/users/.gitkeep
+
+# Documentation & Local Config
+CLAUDE_REPORT_ASSISTANT.md
+SETUP_GUIDE.md
+*.doc
+*.docx
+*.code-workspace
+GEMINI.md
+README.md

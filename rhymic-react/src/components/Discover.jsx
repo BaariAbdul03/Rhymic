@@ -5,7 +5,7 @@ import { SongCardSkeleton } from './Skeleton';
 import styles from './Discover.module.css';
 
 const Discover = () => {
-  const { playlists, fetchPlaylists, aiCategories, fetchAiCategories } = useMusicStore();
+  const { playlists, fetchPlaylists, fetchAiCategories } = useMusicStore();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -13,14 +13,14 @@ const Discover = () => {
       setLoading(true);
       await fetchPlaylists();
       setLoading(false);
-      
+
       const p = useMusicStore.getState().playlists;
       const systems = p.filter(pl => pl.is_system);
       const systemNames = systems.map(s => s.name);
-      
+
       const currentAiCategories = useMusicStore.getState().aiCategories;
       const needsAiFetch = !currentAiCategories || Object.keys(currentAiCategories).length === 0;
-      
+
       if (needsAiFetch && systemNames.length > 0) {
         // Fire and forget - don't block the UI!
         fetchAiCategories(systemNames).catch(console.error);
@@ -43,14 +43,14 @@ const Discover = () => {
       {loading ? (
         <div className={styles.loadingGrid}>
           {[1, 2, 3].map((row) => (
-             <div key={row} style={{marginBottom: '40px'}}>
-               <div style={{height: '30px', width: '200px', backgroundColor: 'var(--bg-elevated)', borderRadius: '8px', marginBottom: '16px'}} />
-               <div style={{display: 'flex', gap: '16px'}}>
-                 {[1, 2, 3, 4, 5].map((card) => (
-                    <SongCardSkeleton key={card} />
-                 ))}
-               </div>
-             </div>
+            <div key={row} style={{ marginBottom: '40px' }}>
+              <div style={{ height: '30px', width: '200px', backgroundColor: 'var(--bg-elevated)', borderRadius: '8px', marginBottom: '16px' }} />
+              <div style={{ display: 'flex', gap: '16px' }}>
+                {[1, 2, 3, 4, 5].map((card) => (
+                  <SongCardSkeleton key={card} />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ) : (
@@ -59,7 +59,7 @@ const Discover = () => {
             <CategoryRow key={playlist.id} playlist={playlist} />
           ))}
           {systemPlaylists.length === 0 && (
-             <p className={styles.emptyState}>No categories found. Run the scanner.</p>
+            <p className={styles.emptyState}>No categories found. Run the scanner.</p>
           )}
         </div>
       )}

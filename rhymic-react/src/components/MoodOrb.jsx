@@ -21,7 +21,7 @@ const moodThemes = {
     glow: "rgba(114, 9, 183, 0.4)"
   },
   "Euphoric": {
-    primary: "#c8a44e", // Rhymic Gold
+    primary: "#c8a44e", // RhyMic Gold
     secondary: "#e8c65a",
     glow: "rgba(200, 164, 78, 0.4)"
   },

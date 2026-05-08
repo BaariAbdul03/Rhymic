@@ -1,5 +1,5 @@
 /**
- * Rhymic Audio Resolver Service
+ * RhyMic Audio Resolver Service
  * 
  * A lightweight Node.js microservice that uses youtubei.js to resolve
  * YouTube audio stream URLs. This runs as a separate Render service to get

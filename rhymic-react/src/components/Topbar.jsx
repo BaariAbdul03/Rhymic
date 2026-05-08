@@ -47,7 +47,7 @@ const Topbar = () => {
     if (path === '/subscribe') return 'Podcast';
     if (path === '/upload') return 'Library / Local Files';
     if (path.startsWith('/artist/')) return 'Explore / Artist';
-    return 'Rhymic';
+    return 'RhyMic';
   };
 
   useEffect(() => {
@@ -125,7 +125,7 @@ const Topbar = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <img loading="lazy" width="40" height="40" src={song.cover} alt="cover" className={styles.resultCover} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder-cover.png"; }} />
+                  <img loading="lazy" width="40" height="40" src={song.cover} alt={song.title} className={styles.resultCover} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder-cover.png"; }} />
                   <div className={styles.resultInfo}>
                     <p className={styles.resultTitle}>{song.title}</p>
                     <p className={styles.resultArtist}>{song.artist}</p>

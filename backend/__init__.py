@@ -54,7 +54,7 @@ def create_app(config_name=None):
     @app.route('/<path:path>')
     def serve_frontend(path):
         if not os.path.exists(DIST_DIR):
-            return "Rhymic Backend Running (Frontend not built)", 200
+            return "RhyMic Backend Running (Frontend not built)", 200
 
         if path != "" and os.path.exists(os.path.join(DIST_DIR, path)):
             return send_from_directory(DIST_DIR, path)
@@ -63,7 +63,7 @@ def create_app(config_name=None):
         if os.path.exists(os.path.join(DIST_DIR, 'index.html')):
             return send_from_directory(DIST_DIR, 'index.html')
 
-        return "Rhymic Frontend Error", 404
+        return "RhyMic Frontend Error", 404
 
     @app.route('/assets/<path:filename>')
     def serve_assets(filename):

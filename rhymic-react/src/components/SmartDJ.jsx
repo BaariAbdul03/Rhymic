@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import styles from './SmartDJ.module.css';
 import { useMusicStore } from '../store/musicStore';
+import toast from 'react-hot-toast';
 
 import { smartDjApi, playlistsApi } from '../services/api';
 import { Sparkles, Play, Save, RefreshCw } from 'lucide-react';
@@ -55,8 +56,6 @@ const SmartDJ = () => {
     try {
       const response = await smartDjApi.recommend(prompt, isRegenerate);
 
-      clearTimeout(timeoutId); // Clear timeout if successful
-
       const data = response.data; // Now returns { title: "...", songs: [...] }
       
       const processed = data.songs.map(s => ({
@@ -91,9 +90,10 @@ const SmartDJ = () => {
         setStatusLabel(matches.length > 0 ? `Local Matches: ${prompt}` : errorMsg);
         setSource('local');
       } else {
-        alert(isQuotaError ? "Gemini Daily Limit Reached. Please try again tomorrow!" : "Could not generate playlist.");
+        toast.error(isQuotaError ? "Gemini Daily Limit Reached. Please try again tomorrow!" : "Could not generate playlist.");
       }
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   };
@@ -115,10 +115,10 @@ const SmartDJ = () => {
       }
       // Force global store to refetch playlists so Sidebar updates immediately
       useMusicStore.getState().fetchPlaylists();
-      alert(`Playlist "${statusLabel}" created!`);
+      toast.success(`Playlist "${statusLabel}" created!`);
     } catch (e) {
       console.error(e);
-      alert("Failed to save playlist");
+      toast.error("Failed to save playlist");
     } finally {
       setIsSaving(false);
     }

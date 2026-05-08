@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, MoreHorizontal, GripVertical, X, Circle } from 'lucide-react';
+import { MoreHorizontal, GripVertical, X, Circle } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useMusicStore } from '../store/musicStore';
 import { useUIStore } from '../store/uiStore';
@@ -7,7 +7,10 @@ import SongCover from './SongCover';
 import styles from './RightPanel.module.css';
 
 const RightPanel = ({ isOverlay }) => {
-  const { queue, currentSong, setCurrentSong, reorderQueue } = useMusicStore();
+  const queue = useMusicStore((state) => state.queue);
+  const currentSong = useMusicStore((state) => state.currentSong);
+  const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
+  const reorderQueue = useMusicStore((state) => state.reorderQueue);
   const setRightPanelOpen = useUIStore(state => state.setRightPanelOpen);
   
   // Resize logic
@@ -90,7 +93,7 @@ const RightPanel = ({ isOverlay }) => {
             <div className={styles.queueItem} style={{ padding: '8px 0' }}>
               <SongCover 
                 src={currentSong.cover} 
-                alt="cover" 
+                alt={currentSong.title} 
                 size="medium" 
                 className={styles.queueCover} 
               />
@@ -127,7 +130,7 @@ const RightPanel = ({ isOverlay }) => {
                             
                             <SongCover 
                               src={song.cover} 
-                              alt="cover" 
+                              alt={song.title} 
                               size="small" 
                               className={styles.queueCoverSmall} 
                             />

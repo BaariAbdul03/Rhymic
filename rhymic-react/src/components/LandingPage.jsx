@@ -5,7 +5,7 @@ const LandingPage = () => {
   const navigate = useNavigate();
   return (
     <div style={{ padding: '60px', textAlign: 'center', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      <h1 style={{ fontSize: '4rem', color: 'var(--accent-primary)', marginBottom: '16px' }}>Rhymic</h1>
+      <h1 style={{ fontSize: '4rem', color: 'var(--accent-primary)', marginBottom: '16px' }}>RhyMic</h1>
       <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)', marginBottom: '40px' }}>Your premium AI-powered music streaming experience.</p>
       <div style={{ display: 'flex', gap: '16px' }}>
         <button 

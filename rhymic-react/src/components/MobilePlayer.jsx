@@ -17,11 +17,20 @@ const MobilePlayer = () => {
   const isAudioLabOpen = useUIStore(state => state.isAudioLabOpen);
   const toggleAudioLab = useUIStore(state => state.toggleAudioLab);
 
-  const { 
-    currentSong, isPlaying, togglePlay, nextSong, prevSong,
-    currentTime, duration, seek, shuffle, toggleShuffle, repeat, toggleRepeat,
-    volume, setVolume
-  } = useMusicStore();
+  const currentSong = useMusicStore((state) => state.currentSong);
+  const isPlaying = useMusicStore((state) => state.isPlaying);
+  const togglePlay = useMusicStore((state) => state.togglePlay);
+  const nextSong = useMusicStore((state) => state.nextSong);
+  const prevSong = useMusicStore((state) => state.prevSong);
+  const currentTime = useMusicStore((state) => state.currentTime);
+  const duration = useMusicStore((state) => state.duration);
+  const seek = useMusicStore((state) => state.seek);
+  const shuffle = useMusicStore((state) => state.shuffle);
+  const toggleShuffle = useMusicStore((state) => state.toggleShuffle);
+  const repeat = useMusicStore((state) => state.repeat);
+  const toggleRepeat = useMusicStore((state) => state.toggleRepeat);
+  const volume = useMusicStore((state) => state.volume);
+  const setVolume = useMusicStore((state) => state.setVolume);
 
   // 3D Tilt Effect State
   const coverRef = useRef(null);
@@ -104,7 +113,7 @@ const MobilePlayer = () => {
             >
               <ChevronDown size={24} />
             </motion.button>
-            <span className={styles.brand}>Rhymic</span>
+            <span className={styles.brand}>RhyMic</span>
             <div style={{ display: 'flex', gap: '12px' }}>
               <motion.button 
                 whileTap={{ scale: 0.9 }}

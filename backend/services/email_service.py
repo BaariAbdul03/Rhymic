@@ -20,7 +20,7 @@ def send_recovery_email(to_email, pin):
 
     html = f"""
     <div style="font-family: -apple-system, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 24px; background: #121212; color: #fff; border-radius: 16px;">
-        <h1 style="color: #D4A843; margin: 0 0 8px 0;">Rhymic</h1>
+        <h1 style="color: #D4A843; margin: 0 0 8px 0;">RhyMic</h1>
         <p style="color: #888; margin: 0 0 32px 0;">Password Recovery</p>
         <p>Your 6-digit recovery PIN is:</p>
         <div style="background: #1a1a1a; border: 1px solid #D4A843; border-radius: 12px; padding: 24px; text-align: center; margin: 24px 0;">
@@ -32,8 +32,8 @@ def send_recovery_email(to_email, pin):
 
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = "Rhymic — Your Recovery PIN"
-        msg["From"] = f"Rhymic <{smtp_email}>"
+        msg["Subject"] = "RhyMic — Your Recovery PIN"
+        msg["From"] = f"RhyMic <{smtp_email}>"
         msg["To"] = to_email
         msg.attach(MIMEText(html, "html"))
 

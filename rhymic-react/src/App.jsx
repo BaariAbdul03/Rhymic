@@ -1,6 +1,7 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
+import { Toaster } from 'react-hot-toast';
 
 import Sidebar from './components/Sidebar';
 import Topbar from './components/Topbar';
@@ -101,7 +102,7 @@ const AppContent = () => {
 
               {/* Premium Placeholders & Features */}
               <Route path="/dj" element={<PageWrapper><Suspense fallback={<Skeleton type="card" count={4} />}><SmartDJ /></Suspense></PageWrapper>} />
-              <Route path="/subscribe" element={<PageWrapper><PremiumPlaceholder title="Rhymic Premium" description="Unlock high-fidelity audio, exclusive podcasts, and ad-free listening." /></PageWrapper>} />
+              <Route path="/subscribe" element={<PageWrapper><PremiumPlaceholder title="RhyMic Premium" description="Unlock high-fidelity audio, exclusive podcasts, and ad-free listening." /></PageWrapper>} />
             </Routes>
           </AnimatePresence>
         </div>
@@ -119,6 +120,35 @@ const AppContent = () => {
         <Visualizer />
         <MobilePlayer />
       </Suspense>
+
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: 'rgba(18, 18, 18, 0.8)',
+            color: '#fff',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(212, 168, 67, 0.2)',
+            borderRadius: '12px',
+            padding: '12px 20px',
+            fontSize: '14px',
+            fontWeight: '500',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+          },
+          success: {
+            iconTheme: {
+              primary: 'var(--accent-primary)',
+              secondary: '#121212',
+            },
+          },
+          error: {
+            style: {
+              border: '1px solid rgba(255, 75, 75, 0.2)',
+            },
+          },
+        }}
+      />
 
       {/* Global Error Toast */}
       <AnimatePresence>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ListMusic, Home, Compass, Radio, Disc, Mic2, PlusSquare, LogOut, Heart, Sparkles, Plus, Globe, Settings as SettingsIcon } from 'lucide-react';
+import { ListMusic, Home, Compass, Radio, Mic2, PlusSquare, Heart, Sparkles, Plus, Globe, Settings as SettingsIcon } from 'lucide-react';
 /* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
@@ -35,7 +35,8 @@ const Sidebar = () => {
   const token = useAuthStore((state) => state.token);
 
   // UI State
-  const { isSidebarOpen, closeSidebar } = useUIStore();
+  const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
+  const closeSidebar = useUIStore((state) => state.closeSidebar);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
 
@@ -79,7 +80,7 @@ const Sidebar = () => {
         <div className={styles.logoHeader}>
           <div className={styles.logo}>
             <Sparkles size={24} color="var(--accent-primary)" />
-            <span>Rhymic</span>
+            <span>RhyMic</span>
           </div>
         </div>
         

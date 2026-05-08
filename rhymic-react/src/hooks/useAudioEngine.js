@@ -85,10 +85,12 @@ export const useAudioEngine = () => {
         prevNode = node;
       });
 
-      // FIX WA-1 & Phase 5: Chain through crossfadeNode then analyser
-      prevNode.connect(crossfadeNode);
-      crossfadeNode.connect(analyser);
-      analyser.connect(ctx.destination);
+      // FIX WA-1 & Phase 5: Chain through analyser THEN crossfadeNode
+      // Connecting analyser first ensures the visualizer NEVER disappears, 
+      // even if the crossfade gain is stuck at 0 during a rapid pause/play.
+      prevNode.connect(analyser);
+      analyser.connect(crossfadeNode);
+      crossfadeNode.connect(ctx.destination);
 
       // Publish analyser to store so Visualizer can consume it, and crossfade for transitions
       setAudioContextNode(ctx, analyser, crossfadeNode);

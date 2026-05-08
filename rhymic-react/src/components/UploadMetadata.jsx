@@ -96,7 +96,7 @@ const UploadMetadata = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          Stream your personal collection directly in Rhymic.
+          Stream your personal collection directly in RhyMic.
         </motion.p>
       </header>
 

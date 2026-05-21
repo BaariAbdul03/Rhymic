@@ -16,4 +16,3 @@ yt-dlp
 pyotp
 qrcode
 supabase
-loguru

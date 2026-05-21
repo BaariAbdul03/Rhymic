@@ -4,17 +4,44 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+def _verify_database_url(url):
+    """
+    Test if the configured database URL is reachable.
+    Returns the URL if healthy, or None if the database is unreachable
+    (e.g. Supabase free-tier paused after inactivity).
+    """
+    if not url or url.startswith('sqlite'):
+        return url  # SQLite is always local, no check needed
+
+    try:
+        from sqlalchemy import create_engine, text
+        engine = create_engine(url, connect_args={"connect_timeout": 5}, pool_pre_ping=True)
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        engine.dispose()
+        print("[DB] PostgreSQL connection verified successfully.")
+        return url
+    except Exception as e:
+        print(f"[DB] WARNING: PostgreSQL unreachable ({type(e).__name__}: {e})")
+        print("[DB] Falling back to local SQLite database.")
+        return None
+
+
 class Config:
     # Use fallback only in development
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-do-not-use-in-prod')
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-jwt-secret-do-not-use-in-prod')
     
-    # DB Config
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url and database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
-        
-    SQLALCHEMY_DATABASE_URI = database_url or 'sqlite:///site.db'
+    # DB Config — with automatic fallback if PostgreSQL is unreachable
+    _raw_database_url = os.environ.get('DATABASE_URL')
+    if _raw_database_url and _raw_database_url.startswith("postgres://"):
+        _raw_database_url = _raw_database_url.replace("postgres://", "postgresql://", 1)
+
+    _verified_url = _verify_database_url(_raw_database_url)
+    SQLALCHEMY_DATABASE_URI = _verified_url or 'sqlite:///site.db'
+    USING_SQLITE_FALLBACK = _verified_url is None and _raw_database_url is not None
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,

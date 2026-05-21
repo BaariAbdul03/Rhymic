@@ -16,15 +16,22 @@ def get_songs():
     if per_page > 500:
         per_page = 500
         
-    # Just returning all for now to not break the frontend which expects a flat array
-    # In Phase 3 we will update the frontend to support paginated responses
-    songs_query = Song.query.all()
-    return jsonify([s.to_dict() for s in songs_query])
+    try:
+        # Just returning all for now to not break the frontend which expects a flat array
+        # In Phase 3 we will update the frontend to support paginated responses
+        songs_query = Song.query.all()
+        return jsonify([s.to_dict() for s in songs_query])
+    except Exception as e:
+        print(f"Songs query error: {e}")
+        return jsonify([]), 200  # Return empty array, not 500
 
 @songs_bp.route('/<int:song_id>', methods=['GET'])
 def get_song(song_id):
-    song = Song.query.get(song_id)
-    if not song:
+    try:
+        song = Song.query.get(song_id)
+        if not song:
+            return jsonify({"message": "Song not found"}), 404
+        return jsonify(song.to_dict())
+    except Exception as e:
+        print(f"Song query error: {e}")
         return jsonify({"message": "Song not found"}), 404
-        
-    return jsonify(song.to_dict())

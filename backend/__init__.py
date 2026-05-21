@@ -1,6 +1,6 @@
 import os
 import threading
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, jsonify
 from urllib.parse import unquote
 
 from backend.config import config
@@ -17,6 +17,14 @@ def create_app(config_name=None):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
     app.config["PROPAGATE_EXCEPTIONS"] = False
+
+    # Log database status on startup
+    if app.config.get('USING_SQLITE_FALLBACK'):
+        print("=" * 60)
+        print("[WARN] Running on SQLite fallback — Supabase DB is paused!")
+        print("[WARN] Data from your Supabase database is NOT available.")
+        print("[WARN] Unpause at: https://supabase.com/dashboard")
+        print("=" * 60)
 
     # Initialize Extensions
     db.init_app(app)
@@ -41,6 +49,16 @@ def create_app(config_name=None):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         return response
+
+    # Health check endpoint for Render and monitoring
+    @app.route('/api/health')
+    def health_check():
+        db_status = "sqlite_fallback" if app.config.get('USING_SQLITE_FALLBACK') else "connected"
+        return jsonify({
+            "status": "ok",
+            "database": db_status,
+            "message": "Supabase DB is paused — running on SQLite fallback" if app.config.get('USING_SQLITE_FALLBACK') else "All systems operational"
+        }), 200
 
     # Make ASSETS_DIR available
     DIST_DIR = os.path.abspath(os.path.join(app.root_path, '..', 'rhymic-react', 'dist'))
@@ -88,20 +106,25 @@ def _initialize_app(app):
             db.create_all()
 
             # MIGRATION: Attempt to add/update profile_pic column safely
-            try:
-                with db.engine.connect() as conn:
-                    from sqlalchemy import text
-                    try:
-                        conn.execute(text('ALTER TABLE "user" ADD COLUMN profile_pic TEXT'))
-                        conn.commit()
-                        print("Migrated: Added profile_pic column")
-                    except Exception:
-                        conn.rollback() 
-                        conn.execute(text('ALTER TABLE "user" ALTER COLUMN profile_pic TYPE TEXT'))
-                        conn.commit()
-                        print("Migrated: Updated profile_pic to TEXT")
-            except Exception as e:
-                pass # Expected if using non-postgres or already migrated
+            # Only run on PostgreSQL (not SQLite fallback)
+            if not app.config.get('USING_SQLITE_FALLBACK'):
+                try:
+                    with db.engine.connect() as conn:
+                        from sqlalchemy import text
+                        try:
+                            conn.execute(text('ALTER TABLE "user" ADD COLUMN profile_pic TEXT'))
+                            conn.commit()
+                            print("Migrated: Added profile_pic column")
+                        except Exception:
+                            conn.rollback() 
+                            try:
+                                conn.execute(text('ALTER TABLE "user" ALTER COLUMN profile_pic TYPE TEXT'))
+                                conn.commit()
+                                print("Migrated: Updated profile_pic to TEXT")
+                            except Exception:
+                                conn.rollback()
+                except Exception as e:
+                    pass # Expected if already migrated
 
             # Scan Library (Fast)
             scan_library(app)

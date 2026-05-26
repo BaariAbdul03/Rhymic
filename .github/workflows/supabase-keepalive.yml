@@ -9,8 +9,51 @@ jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase
+      - name: Ping Supabase REST API
         run: |
-          curl "https://vwopvkcezvwuxehibrul.supabase.co/rest/v1/keep_alive?select=id&limit=1" \
-            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+          # Resolve Supabase URL: secret first, then default to the active project URL
+          URL="${{ secrets.SUPABASE_URL }}"
+          if [ -z "$URL" ]; then
+            URL="https://vbvlyjqgzvpejxnmyssa.supabase.co"
+          fi
+          
+          # Resolve Supabase Key: check service key first, then anon key, then generic key
+          KEY="${{ secrets.SUPABASE_SERVICE_KEY }}"
+          if [ -z "$KEY" ]; then
+            KEY="${{ secrets.SUPABASE_ANON_KEY }}"
+          fi
+          if [ -z "$KEY" ]; then
+            KEY="${{ secrets.SUPABASE_KEY }}"
+          fi
+          
+          if [ -z "$KEY" ]; then
+            echo "::warning::No Supabase API Key found in secrets. Attempting anonymous ping..."
+          fi
+          
+          echo "Pinging Supabase REST API at $URL..."
+          
+          # Ping the OpenAPI description endpoint which forces PostgREST schema refresh and DB contact
+          response_code=$(curl -s -o /dev/null -w "%{http_code}" "$URL/rest/v1/" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY")
+          
+          echo "REST API response code: $response_code"
+          if [ "$response_code" -eq 200 ] || [ "$response_code" -eq 401 ] || [ "$response_code" -eq 404 ]; then
+            echo "Successfully contacted Supabase! (HTTP $response_code)"
+          else
+            echo "::warning::Received unexpected response code $response_code"
+          fi
+
+      - name: Ping Supabase Database (PostgreSQL)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            echo "DATABASE_URL found in secrets. Initiating direct PostgreSQL ping..."
+            # Execute a simple lightweight query to keep the database active
+            psql "$DATABASE_URL" -c "SELECT 1;"
+            echo "PostgreSQL query completed successfully!"
+          else
+            echo "No DATABASE_URL secret found. Skipping direct PostgreSQL ping."
+          fi
+

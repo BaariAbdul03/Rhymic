@@ -1,8 +1,8 @@
-# 🎵 Rhymic – Enterprise AI Music Streaming
+# 🎵 RhyMic – Enterprise AI Music Streaming
 
-![Rhymic](https://img.shields.io/badge/Rhymic-v3.1-gold) ![React](https://img.shields.io/badge/React-19-blue) ![Python](https://img.shields.io/badge/Backend-Flask-green) ![AI](https://img.shields.io/badge/AI-Gemini-purple)
+![RhyMic](https://img.shields.io/badge/RhyMic-v3.1-gold) ![React](https://img.shields.io/badge/React-19-blue) ![Python](https://img.shields.io/badge/Backend-Flask-green) ![AI](https://img.shields.io/badge/AI-Gemini-purple)
 
-Rhymic is a premium, full-stack music streaming platform designed with a high-fidelity glassmorphism aesthetic. It features a robust Web Audio engine, AI-driven song categorization, and a suite of enterprise-grade security features.
+RhyMic is a premium, full-stack music streaming platform designed with a high-fidelity glassmorphism aesthetic. It features a robust Web Audio engine, AI-driven song categorization, and a suite of enterprise-grade security features.
 
 > [!IMPORTANT]
 > **DEPLOYMENT NOTICE:** The "Online Songs" and "Smart DJ" streaming features are optimized for local development. Due to YouTube's rate limiting and IP blocking on cloud platforms like Render, these features may not function as expected on live deployments.
@@ -30,7 +30,7 @@ Rhymic is a premium, full-stack music streaming platform designed with a high-fi
 
 ### Backend
 - **Framework**: Python Flask (Blueprints architecture)
-- **Database**: SQLite (Development) / PostgreSQL (Production) with SQLAlchemy.
+- **Database**: PostgreSQL (Supabase) with SQLAlchemy.
 - **AI**: Google Gemini Pro & Groq Cloud SDKs.
 - **Storage**: Supabase Cloud Storage for persistent thumbnail caching.
 
@@ -45,8 +45,8 @@ Rhymic is a premium, full-stack music streaming platform designed with a high-fi
 
 ### 2. Clone & Setup
 ```sh
-git clone https://github.com/BaariAbdul03/Rhymic-3.1.git
-cd Rhymic-3.1
+git clone https://github.com/BaariAbdul03/RhyMic-3.1.git
+cd RhyMic-3.1
 ```
 
 ### 3. Backend Setup
@@ -90,4 +90,4 @@ SUPABASE_SERVICE_KEY=your_key
 ## 📜 License
 Licensed under the **MIT License**. Built for the next generation of music lovers.
 
-⭐ If you find Rhymic impressive, give it a star on **GitHub**! ⭐
+⭐ If you find RhyMic impressive, give it a star on **GitHub**! ⭐

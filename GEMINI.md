@@ -1,11 +1,11 @@
-# Rhymic Enterprise – AI Context & Project Documentation 
+# RhyMic Enterprise – AI Context & Project Documentation 
 
-> **NOTICE FOR AI WORKERS:** This document (`GEMINI.md`) contains the architectural blueprint, state management logic, design principles, and historical bug fixes for the **Rhymic** music streaming application. Please read this file to gain immediate context on the codebase before offering solutions or modifying structural logic.
+> **NOTICE FOR AI WORKERS:** This document (`GEMINI.md`) contains the architectural blueprint, state management logic, design principles, and historical bug fixes for the **RhyMic** music streaming application. Please read this file to gain immediate context on the codebase before offering solutions or modifying structural logic.
 
 ---
 
 ## 🚀 1. Project Overview & Tech Stack
-Rhymic is a full-stack, enterprise-grade music streaming platform designed to mimic the premium aesthetics and dynamic functionality of applications like Spotify. It emphasizes a mobile-first, glassmorphism-heavy UI, powered by a robust state engine and intelligent backend integrations (including Google's Gemini Neural Networks).
+RhyMic is a full-stack, enterprise-grade music streaming platform designed to mimic the premium aesthetics and dynamic functionality of applications like Spotify. It emphasizes a mobile-first, glassmorphism-heavy UI, powered by a robust state engine and intelligent backend integrations (including Google's Gemini Neural Networks).
 
 ### **Frontend**
 - **Framework:** React 19 + Vite
@@ -82,14 +82,21 @@ When working on the application, please be aware of these foundational structura
 15. **Local Files Overhaul (Phase 23):** Redesigned the `UploadMetadata.jsx` page to support bulk uploads, "Play All", "Shuffle All", and individual "Add to Queue" actions. These tracks are session-only and managed via Blob URLs.
 16. **Settings Centralization (Phase 23):** Consolidated all user-identity (Avatar/Name) and security (Password/2FA) management into the `Settings.jsx` page. Legacy upload triggers in `Profile.jsx` have been removed to prevent state desync.
 17. **CSS Masking Standards (Phase 23):** To support non-WebKit browsers (Firefox) and resolve lint warnings, all gradient text effects MUST include the standard `background-clip: text` property alongside the vendor-prefixed `-webkit-background-clip`.
+18. **Thumbnail Visibility (Phase 24):** Upgraded `SongCover.jsx` to v5.2. Removed premature 'loaded' flags that caused broken icon flickers. Every instance now strictly waits for the browser's `onLoad` event before hiding the "Liquid Gold" fallback, ensuring 100% visual smoothness.
+19. **Global Data Integrity (Phase 24):** Fixed a critical bug in `musicStore.js` where `setSongs()` was overwriting the master catalog. It now correctly sets ONLY the `queue` and `originalQueue`, preventing the Discover page and Library from "disappearing" when playing a specific playlist or Smart DJ mix.
+20. **Crash-Proof Proxy (Phase 24):** Rewrote the backend `/api/stream/thumbnail` route with 5 layers of defense. It now uses a 302 redirect as a "final safety net," ensuring that if the proxy fetch fails, the browser fetches the image directly from the CDN rather than showing a 500 error.
+21. **Visualizer Graph Stability (Phase 25):** Swapped the Web Audio Graph connection order in `useAudioEngine.js` to `AnalyserNode` -> `CrossfadeGain`. This guarantees the visualizer receives pure audio data before the master volume crossfader cuts the signal, preventing the canvas from flatlining during rapid pauses.
+22. **Instant Audio Controls (Phase 25):** Implemented a 2-hour memory cache (`_stream_cache`) in `stream.py` to store resolved YouTube audio links. Seeking or resuming a track now bypasses the 1-2 second `yt-dlp` extraction delay, making controls instantaneous.
+23. **Snappy Track Transitions (Phase 25):** Optimized the `musicStore.js` crossfader logic. Fade-out durations were reduced to 150ms and `await` blocks were removed, allowing the UI to instantly switch songs while the old audio fades out in the background.
 
 ---
 
 ## 🚀 6. Performance & UX Standards
 - **Golden Placeholders:** All images MUST use the `<SongCover />` component. This ensures the "Liquid Gold" animated fallback is visible during the loading phase (`!loaded`), preventing black-box layout shifts.
+- **State Separation:** Always distinguish between `state.songs` (the master database) and `state.queue` (the current play context). Never overwrite the master database unless performing a fresh `fetchSongs()` from the backend.
 - **Atomic Caching:** Never write direct to cache files; use `ThumbnailCache.save_to_cache` to ensure atomic operations.
 - **Resize Constraints:** The Queue panel resize is constrained between `300px` and `600px` for layout stability.
 
 ---
 
-*This document was generated automatically post-Phase 22 overhaul to ensure seamless integration for subsequent AI engineers executing contextual commands over the Rhymic project matrix.*
+*This document was generated automatically post-Phase 25 overhaul to ensure seamless integration for subsequent AI engineers executing contextual commands over the RhyMic project matrix.*

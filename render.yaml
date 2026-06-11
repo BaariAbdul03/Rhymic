@@ -10,6 +10,9 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.0"
 
+      - key: NODE_VERSION
+        value: "22.16.0"
+
       - key: FLASK_CONFIG
         value: production
 

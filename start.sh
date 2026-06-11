@@ -20,7 +20,7 @@ if [[ ! -x "$CONCURRENTLY" ]]; then
 fi
 
 exec "$CONCURRENTLY" \
-  --kill-others-on-fail \
+  --kill-others \
   --names "resolver,web" \
   --prefix-colors "cyan,green" \
   "cd backend/resolver && PORT=${RESOLVER_PORT} node server.js" \

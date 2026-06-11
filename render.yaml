@@ -1,62 +1,53 @@
 services:
-  - type: pserv
-    name: rhymic-resolver
-    env: node
-    buildCommand: cd backend/resolver && npm ci
-    startCommand: cd backend/resolver && npm start
-    envVars:
-      - key: RESOLVER_API_KEY
-        generateValue: true
-      - key: YT_COOKIES_B64
-        sync: false
-      - key: YT_OAUTH_CREDENTIALS
-        sync: false
-      - key: YT_PIPED_INSTANCES
-        sync: false
-
-  # ----------------------------------------
-  # Flask Backend Service (Serves SPA from /dist)
-  # ----------------------------------------
   - type: web
-    name: rhymic-backend
+    name: rhymic
     env: python
     buildCommand: ./build.sh
-    startCommand: gunicorn app:app --workers 2 --timeout 120
+    startCommand: bash start.sh
     healthCheckPath: /api/health
+
     envVars:
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: "3.11.0"
+
       - key: FLASK_CONFIG
-        value: "production"
+        value: production
+
       - key: ONLINE_STREAM_PROVIDER
-        value: "auto"
-      - key: RESOLVER_HOSTPORT
-        fromService:
-          type: pserv
-          name: rhymic-resolver
-          property: hostport
+        value: auto
+
+      - key: RESOLVER_PORT
+        value: "3001"
+
+      - key: WEB_CONCURRENCY
+        value: "1"
+
       - key: RESOLVER_API_KEY
-        fromService:
-          type: pserv
-          name: rhymic-resolver
-          envVarKey: RESOLVER_API_KEY
+        generateValue: true
+
       - key: JWT_SECRET_KEY
         generateValue: true
+
       - key: DATABASE_URL
         sync: false
+
       - key: GOOGLE_API_KEY
         sync: false
+
       - key: GROQ_API_KEY
         sync: false
-      - key: RESEND_API_KEY
-        sync: false
+
       - key: SUPABASE_URL
         sync: false
+
       - key: SUPABASE_SERVICE_KEY
         sync: false
+
       - key: YT_COOKIES_B64
         sync: false
+
       - key: YT_OAUTH_CREDENTIALS
         sync: false
+
       - key: YT_PIPED_INSTANCES
         sync: false

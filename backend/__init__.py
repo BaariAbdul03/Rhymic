@@ -72,6 +72,9 @@ def create_app(config_name=None):
                 provider_status["resolver_responsive"] = resp.status_code == 200
             except Exception:
                 provider_status["resolver_responsive"] = False
+                
+            if not provider_status.get("resolver_responsive"):
+                status_code = 503
 
         return jsonify({
             "status": "ok" if status_code == 200 else "error",

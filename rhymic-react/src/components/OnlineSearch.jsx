@@ -6,6 +6,7 @@ import { streamApi } from '../services/api';
 import { useMusicStore } from '../store/musicStore';
 import SongCover from './SongCover';
 import { preloadImages } from '../utils/preloadImages';
+import HostedDemoNotice from './HostedDemoNotice';
 import styles from './OnlineSearch.module.css';
 
 const OnlineSearch = () => {
@@ -122,10 +123,14 @@ const OnlineSearch = () => {
           <div className={styles.iconBox}><Globe size={32}/></div>
           <div>
             <h1>Global Database</h1>
-            <p>Stream directly from the unified public music index.</p>
+            <p>
+              {streamStatus?.enabled === false
+                ? 'Catalog browsing is paused in this hosted portfolio deployment.'
+                : 'Stream directly from the unified public music index.'}
+            </p>
           </div>
           <span className={`${styles.statusPill} ${streamStatus?.enabled === false || !streamStatus ? '' : styles.online}`}>
-            {!streamStatus ? 'Checking online catalog' : streamStatus.enabled === false ? 'Using local fallback' : 'Online catalog active'}
+            {!streamStatus ? 'Checking online catalog' : streamStatus.enabled === false ? 'Hosted demo mode' : 'Online catalog active'}
           </span>
         </motion.div>
 
@@ -138,12 +143,13 @@ const OnlineSearch = () => {
           <Search size={20} className={styles.searchIcon} />
           <input 
             type="text" 
-            placeholder="Search millions of songs..." 
+            placeholder={streamStatus?.enabled === false ? 'Online search disabled in hosted demo' : 'Search millions of songs...'}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className={styles.searchInput}
+            disabled={streamStatus?.enabled === false}
           />
-          <button type="submit" disabled={isLoading} className={styles.searchBtn}>
+          <button type="submit" disabled={isLoading || streamStatus?.enabled === false} className={styles.searchBtn}>
             {isLoading ? 'Searching...' : 'Search'}
           </button>
         </motion.form>
@@ -151,9 +157,7 @@ const OnlineSearch = () => {
 
       <div className={styles.content}>
         {streamStatus?.enabled === false && (
-          <div className={styles.loading}>
-            Online streaming is disabled on this deployment. Search and trending are intentionally paused.
-          </div>
+          <HostedDemoNotice compact />
         )}
         <AnimatePresence mode="wait">
           {streamStatus?.enabled === false ? null : !hasSearched ? (

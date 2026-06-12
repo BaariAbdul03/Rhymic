@@ -5,6 +5,7 @@ import { streamApi } from '../services/api';
 import CategoryRow from './CategoryRow';
 import { SongCardSkeleton } from './Skeleton';
 import { preloadImages } from '../utils/preloadImages';
+import HostedDemoNotice from './HostedDemoNotice';
 import styles from './Discover.module.css';
 
 const DEFAULT_DISCOVER_CATEGORIES = ['Hindi', 'English', 'Rap', 'Modern', 'Retro Classics', 'Romantic'];
@@ -98,6 +99,8 @@ const Discover = () => {
           {statusMessage}
         </span>
       </div>
+
+      {statusMessage === 'Online streaming disabled' && <HostedDemoNotice compact />}
 
       {loading ? (
         <div className={styles.loadingGrid}>

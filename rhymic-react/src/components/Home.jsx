@@ -5,6 +5,7 @@ import styles from './Home.module.css';
 import Hero from './Hero';
 import TopSongs from './TopSongs';
 import SongCover from './SongCover';
+import HostedDemoNotice from './HostedDemoNotice';
 import { useMusicStore } from '../store/musicStore';
 import { streamApi } from '../services/api';
 import { preloadImages } from '../utils/preloadImages';
@@ -197,6 +198,8 @@ const Home = () => {
   return (
     <div className={styles.homeContainer}>
       <Hero onlineSongs={onlineRanked} onlineStatus={onlineStatus} />
+
+      {onlineStatus === 'disabled' && <HostedDemoNotice />}
 
       <div className={styles.quickStrip}>
         <div className={`${styles.statusPill} ${styles[onlineStatus] || ''}`}>

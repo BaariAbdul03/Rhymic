@@ -5,7 +5,13 @@ PUBLIC_PORT="${PORT:-10000}"
 RESOLVER_PORT="${RESOLVER_PORT:-3001}"
 
 export RESOLVER_HOSTPORT="127.0.0.1:${RESOLVER_PORT}"
-export ONLINE_STREAM_PROVIDER="${ONLINE_STREAM_PROVIDER:-auto}"
+HOSTED_DEMO_MODE="${HOSTED_DEMO_MODE:-true}"
+
+if [[ "$HOSTED_DEMO_MODE" == "true" ]]; then
+  export ONLINE_STREAM_PROVIDER="disabled"
+else
+  export ONLINE_STREAM_PROVIDER="${ONLINE_STREAM_PROVIDER:-auto}"
+fi
 
 if [[ -z "${RESOLVER_API_KEY:-}" ]]; then
   echo "RESOLVER_API_KEY must be configured."

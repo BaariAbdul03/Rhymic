@@ -17,7 +17,10 @@ services:
         value: production
 
       - key: ONLINE_STREAM_PROVIDER
-        value: auto
+        value: disabled
+
+      - key: HOSTED_DEMO_MODE
+        value: "true"
 
       - key: RESOLVER_PORT
         value: "3001"

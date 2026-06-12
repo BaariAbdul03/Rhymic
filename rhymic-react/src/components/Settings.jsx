@@ -12,7 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 import styles from './Settings.module.css';
 

@@ -1,7 +1,7 @@
 
 
 .categoryContainer {
-  margin-bottom: 32px;
+  margin-bottom: 22px;
   position: relative;
 }
 
@@ -9,7 +9,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .title {
@@ -65,11 +65,11 @@
 
 .scrollContainer {
   display: flex;
-  gap: 24px;
+  gap: 16px;
   overflow-x: auto;
   width: 100%;
-  padding-bottom: 24px;
-  padding-top: 10px; /* Space for hover lift */
+  padding-bottom: 18px;
+  padding-top: 6px;
   scrollbar-width: none; /* Firefox */
   scroll-behavior: smooth;
   -webkit-overflow-scrolling: touch;
@@ -81,32 +81,32 @@
 
 .card {
   flex: 0 0 auto;
-  width: 180px;
+  width: 164px;
   cursor: pointer;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(150%);
   -webkit-backdrop-filter: blur(var(--glass-blur));
-  padding: 16px;
-  border-radius: 16px;
+  padding: 12px;
+  border-radius: 8px;
   transition: all 0.3s var(--transition-spring);
   box-sizing: border-box;
   border: 1px solid var(--glass-border);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
 .card:hover {
   background: var(--glass-hover);
   border-color: var(--accent-primary);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--glass-border-glow);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.34);
 }
 
 .coverContainer {
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
 }
 
@@ -122,7 +122,7 @@
 }
 
 .songTitle {
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   font-weight: 700;
   color: var(--text-primary);
   white-space: nowrap;
@@ -141,10 +141,33 @@
   margin: 0;
 }
 
+.songMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.songMeta .songArtist {
+  flex: 1;
+}
+
+.sourceBadge {
+  flex-shrink: 0;
+  font-size: 0.64rem;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 4px;
+  color: var(--accent-text);
+  background: var(--accent-primary);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .playOverlay {
   position: absolute;
-  bottom: 12px;
-  right: 12px;
+  bottom: 10px;
+  right: 10px;
   z-index: 10;
   opacity: 0;
   transform: translateY(12px) scale(0.9);
@@ -161,8 +184,8 @@
   color: var(--accent-text);
   border: none;
   border-radius: 50%;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -187,7 +210,7 @@
   }
 
   .card {
-    width: 150px;
+    width: 146px;
     padding: 12px;
   }
 }

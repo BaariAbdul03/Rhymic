@@ -12,7 +12,7 @@
 }
 .pageContainer::-webkit-scrollbar-thumb {
   background-color: rgba(255,255,255,0.2);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 @keyframes fadeIn {
@@ -26,7 +26,7 @@
   display: flex;
   align-items: flex-end;
   gap: 32px;
-  padding: 40px 32px;
+  padding: 34px 32px;
   background: transparent; 
   overflow: hidden; /* Clip the blurred background */
 }
@@ -46,7 +46,7 @@
   width: 230px;
   height: 230px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 6px;
   box-shadow: 0 4px 60px rgba(0,0,0,0.5);
   z-index: 2;
   position: relative;
@@ -77,7 +77,7 @@
 }
 
 .title {
-  font-size: 4.5rem; /* Massive Title */
+  font-size: clamp(2.6rem, 6vw, 4.1rem);
   font-weight: 900;
   color: white;
   margin: 0;
@@ -95,7 +95,7 @@
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
-  border-radius: 8px;
+  border-radius: 6px;
   width: 36px;
   height: 36px;
   display: flex;
@@ -169,7 +169,7 @@
 
 /* --- LIST STYLES --- */
 .listContainer {
-  padding: 24px 32px;
+  padding: 22px 32px;
   background: var(--bg-primary); /* Use theme bg */
   position: relative;
   z-index: 1;
@@ -201,8 +201,8 @@
 .songItem {
   display: flex;
   align-items: center;
-  padding: 12px 16px; /* Taller rows */
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background-color 0.2s;
   border: 1px solid transparent;

@@ -4,7 +4,7 @@
   height: 100%;
   display: flex;
   justify-content: center;
-  padding-top: 60px; /* Start from top but pushed down */
+  padding: 36px 0;
   box-sizing: border-box;
   overflow-y: auto;
   overflow-x: hidden;
@@ -28,19 +28,17 @@
 
 .auroraBackground {
   position: absolute;
-  top: -20%; left: -20%; right: -20%; bottom: -20%;
-  background: radial-gradient(circle at 50% 50%, rgba(200, 164, 78, 0.15) 0%, transparent 60%),
-              radial-gradient(circle at 80% 20%, rgba(29, 185, 84, 0.1) 0%, transparent 50%),
-              radial-gradient(circle at 20% 80%, rgba(140, 115, 54, 0.1) 0%, transparent 50%);
-  filter: blur(80px);
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(200, 164, 78, 0.08), transparent 32%),
+    linear-gradient(225deg, rgba(29, 185, 84, 0.045), transparent 38%);
   z-index: 0;
   pointer-events: none;
-  animation: auroraFlow 20s linear infinite;
 }
 
 .content {
   width: 100%;
-  max-width: 600px;
+  max-width: 760px;
   text-align: center;
   padding: 0 20px 40px 20px;
   position: relative;
@@ -51,7 +49,7 @@
   width: 80px;
   height: 80px;
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-  border-radius: 50%;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -61,7 +59,7 @@
 }
 
 .title {
-  font-size: 3.5rem;
+  font-size: 2.8rem;
   font-weight: 900;
   color: var(--text-primary);
   margin: 0 0 16px 0;
@@ -71,7 +69,7 @@
 .subtitle {
   font-size: 1.15rem;
   color: var(--text-secondary);
-  margin: 0 0 40px 0;
+  margin: 0 0 28px 0;
   font-weight: 500;
 }
 
@@ -92,7 +90,7 @@
 .input {
   flex-grow: 1;
   padding: 18px 24px;
-  border-radius: 16px;
+  border-radius: 8px;
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
@@ -118,7 +116,7 @@
 
 .button {
   padding: 16px 32px;
-  border-radius: 16px;
+  border-radius: 8px;
   border: none;
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   color: var(--accent-text);
@@ -152,7 +150,7 @@
 
 .chip {
   padding: 8px 16px;
-  border-radius: 20px;
+  border-radius: 6px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-secondary);
@@ -179,7 +177,7 @@
 
 .secondaryBtn {
   padding: 12px 24px;
-  border-radius: 12px;
+  border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-primary);
@@ -227,7 +225,7 @@
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
   padding: 12px;
-  border-radius: 16px;
+  border-radius: 8px;
   cursor: pointer;
   text-align: left;
   transition: all 0.3s var(--transition-spring);
@@ -244,7 +242,7 @@
 .miniCard img {
   width: 56px;
   height: 56px;
-  border-radius: 10px;
+  border-radius: 8px;
   object-fit: cover;
   box-shadow: 0 4px 10px rgba(0,0,0,0.3);
 }

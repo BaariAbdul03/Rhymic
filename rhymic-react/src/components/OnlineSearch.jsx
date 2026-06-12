@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 /* eslint-disable-next-line no-unused-vars */
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Search, Flame, Globe, Play, SignalHigh, Clock } from 'lucide-react';
 import { streamApi } from '../services/api';
 import { useMusicStore } from '../store/musicStore';
 import SongCover from './SongCover';
+import { preloadImages } from '../utils/preloadImages';
 import styles from './OnlineSearch.module.css';
 
 const OnlineSearch = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [trending, setTrending] = useState([]);
+  const [streamStatus, setStreamStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   
@@ -23,7 +25,12 @@ const OnlineSearch = () => {
     // Fetch trending on mount
     const fetchTrending = async () => {
       try {
+        const statusRes = await streamApi.status();
+        setStreamStatus(statusRes.data);
+        if (statusRes.data?.enabled === false) return;
+
         const res = await streamApi.getTrending();
+        preloadImages(res.data, 18);
         setTrending(res.data);
       } catch (error) {
         console.error("Failed to load trending:", error);
@@ -34,12 +41,13 @@ const OnlineSearch = () => {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim() || streamStatus?.enabled === false) return;
     
     setIsLoading(true);
     setHasSearched(true);
     try {
       const res = await streamApi.search(query);
+      preloadImages(res.data, 18);
       setResults(res.data);
     } catch (error) {
       console.error("Search failed:", error);
@@ -94,7 +102,7 @@ const OnlineSearch = () => {
               <h4 className={styles.truncate}>{song.title}</h4>
               <p className={styles.truncate}>{song.artist}</p>
               <div className={styles.songBadges}>
-                <span className={styles.duration}><Clock size={14} /> {song.duration}</span>
+                <span className={styles.duration}><Clock size={14} /> {song.duration || '--:--'}</span>
               </div>
             </div>
           </motion.div>
@@ -116,6 +124,9 @@ const OnlineSearch = () => {
             <h1>Global Database</h1>
             <p>Stream directly from the unified public music index.</p>
           </div>
+          <span className={`${styles.statusPill} ${streamStatus?.enabled === false || !streamStatus ? '' : styles.online}`}>
+            {!streamStatus ? 'Checking online catalog' : streamStatus.enabled === false ? 'Using local fallback' : 'Online catalog active'}
+          </span>
         </motion.div>
 
         <motion.form 
@@ -139,8 +150,13 @@ const OnlineSearch = () => {
       </div>
 
       <div className={styles.content}>
+        {streamStatus?.enabled === false && (
+          <div className={styles.loading}>
+            Online streaming is disabled on this deployment. Search and trending are intentionally paused.
+          </div>
+        )}
         <AnimatePresence mode="wait">
-          {!hasSearched ? (
+          {streamStatus?.enabled === false ? null : !hasSearched ? (
             <motion.div 
               key="trending"
               initial={{ opacity: 0 }}

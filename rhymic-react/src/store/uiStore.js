@@ -2,7 +2,9 @@ import { create } from 'zustand';
 
 export const useUIStore = create((set) => ({
   isSidebarOpen: false,
+  isSidebarCompact: false,
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  toggleSidebarCompact: () => set((state) => ({ isSidebarCompact: !state.isSidebarCompact })),
   closeSidebar: () => set({ isSidebarOpen: false }),
   openSidebar: () => set({ isSidebarOpen: true }),
 

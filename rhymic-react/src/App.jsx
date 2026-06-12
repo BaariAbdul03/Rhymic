@@ -1,6 +1,6 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
 import { Toaster } from 'react-hot-toast';
 
 import Sidebar from './components/Sidebar';
@@ -45,6 +45,7 @@ const AppContent = () => {
   const queue = useMusicStore((state) => state.queue);
   const isRightPanelOpen = useUIStore(state => state.isRightPanelOpen);
   const isPlayerOpen = useUIStore(state => state.isPlayerOpen);
+  const isSidebarCompact = useUIStore(state => state.isSidebarCompact);
   
   const token = useAuthStore((state) => state.token);
   const error = useMusicStore((state) => state.error);
@@ -81,7 +82,7 @@ const AppContent = () => {
   const showRightPanel = (currentSong || queue.length > 0) && isRightPanelOpen;
 
   return (
-    <div className={`${styles.appContainer} ${!showRightPanel ? styles.hideRightPanel : ''}`}>
+    <div className={`${styles.appContainer} ${isSidebarCompact ? styles.compactSidebar : ''} ${!showRightPanel ? styles.hideRightPanel : ''}`}>
       <Sidebar />
       
       <main className={styles.mainWrapper}>

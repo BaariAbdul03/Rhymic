@@ -2,15 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, Menu, User as UserIcon, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import { useMusicStore } from '../store/musicStore';
+import { streamApi } from '../services/api';
+import SongCover from './SongCover';
 import styles from './Topbar.module.css';
 
 const Topbar = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
+  const [searchResults, setSearchResults] = useState({ songs: [], artists: [], playlists: [], online: [] });
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
@@ -18,7 +22,9 @@ const Topbar = () => {
   const user = useAuthStore((state) => state.user);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
   const songs = useMusicStore((state) => state.songs);
+  const playlists = useMusicStore((state) => state.playlists);
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
+  const setQueue = useMusicStore((state) => state.setQueue);
 
   const logout = useAuthStore((state) => state.logout);
   const navigate = useNavigate();
@@ -52,23 +58,64 @@ const Topbar = () => {
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
-      setSearchResults([]);
+      setSearchResults({ songs: [], artists: [], playlists: [], online: [] });
+      setSearchError('');
       setIsDropdownOpen(false);
       return;
     }
-    
-    const filtered = songs.filter(song =>
-      song.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      song.artist.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setSearchResults(filtered);
+
+    const query = searchQuery.toLowerCase();
+    const filteredSongs = songs
+      .filter(song =>
+        song.title.toLowerCase().includes(query) ||
+        song.artist.toLowerCase().includes(query)
+      )
+      .slice(0, 5);
+    const artistMap = new Map();
+    songs.forEach((song) => {
+      if (song.artist?.toLowerCase().includes(query) && !artistMap.has(song.artist)) {
+        artistMap.set(song.artist, song);
+      }
+    });
+    const filteredPlaylists = playlists
+      .filter((playlist) => playlist.name?.toLowerCase().includes(query))
+      .slice(0, 4);
+
+    setSearchResults({ songs: filteredSongs, artists: Array.from(artistMap.values()).slice(0, 4), playlists: filteredPlaylists, online: [] });
     setIsDropdownOpen(true);
-  }, [searchQuery, songs]);
+    setSearchLoading(true);
+    setSearchError('');
+
+    const timeout = setTimeout(async () => {
+      try {
+        const statusRes = await streamApi.status();
+        if (statusRes.data?.enabled === false) {
+          setSearchLoading(false);
+          return;
+        }
+        const res = await streamApi.search(searchQuery);
+        setSearchResults((current) => ({ ...current, online: Array.isArray(res.data) ? res.data.slice(0, 5) : [] }));
+      } catch {
+        setSearchError('Online search unavailable');
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery, songs, playlists]);
 
   const handleResultClick = (song) => {
+    setQueue([song]);
     setCurrentSong(song);
     setSearchQuery('');
-    setSearchResults([]);
+    setSearchResults({ songs: [], artists: [], playlists: [], online: [] });
+    setIsDropdownOpen(false);
+  };
+
+  const closeSearch = () => {
+    setSearchQuery('');
+    setSearchResults({ songs: [], artists: [], playlists: [], online: [] });
     setIsDropdownOpen(false);
   };
   
@@ -99,7 +146,7 @@ const Topbar = () => {
           <Search className={styles.searchIcon} size={18} />
           <input 
             type="text" 
-            placeholder="Search for artist, songs..." 
+              placeholder="Search songs, artists, playlists, online..." 
             className={styles.searchInput}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -108,7 +155,7 @@ const Topbar = () => {
         </div>
 
         <AnimatePresence>
-          {isDropdownOpen && searchResults.length > 0 && (
+          {isDropdownOpen && (
             <motion.div 
               className={styles.searchResults}
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -116,22 +163,72 @@ const Topbar = () => {
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 260, damping: 20 }}
             >
-              {searchResults.map((song, i) => (
-                <motion.div 
-                  key={song.id} 
-                  className={styles.resultItem}
-                  onClick={() => handleResultClick(song)}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                >
-                  <img loading="lazy" width="40" height="40" src={song.cover} alt={song.title} className={styles.resultCover} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder-cover.png"; }} />
-                  <div className={styles.resultInfo}>
-                    <p className={styles.resultTitle}>{song.title}</p>
-                    <p className={styles.resultArtist}>{song.artist}</p>
-                  </div>
-                </motion.div>
-              ))}
+              {searchResults.songs.length > 0 && (
+                <div className={styles.resultSection}>
+                  <p className={styles.resultSectionTitle}>Songs</p>
+                  {searchResults.songs.map((song, i) => (
+                    <motion.div key={`song-${song.id}`} className={styles.resultItem} onClick={() => handleResultClick(song)} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
+                      <SongCover src={song.cover} alt={song.title} size="small" className={styles.resultCover} />
+                      <div className={styles.resultInfo}>
+                        <p className={styles.resultTitle}>{song.title}</p>
+                        <p className={styles.resultArtist}>{song.artist}</p>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {searchResults.artists.length > 0 && (
+                <div className={styles.resultSection}>
+                  <p className={styles.resultSectionTitle}>Artists</p>
+                  {searchResults.artists.map((song) => (
+                    <div key={`artist-${song.artist}`} className={styles.resultItem} onClick={() => { navigate(`/artist/${encodeURIComponent(song.artist)}`); closeSearch(); }}>
+                      <SongCover src={song.cover} alt={song.artist} size="small" className={styles.resultCover} />
+                      <div className={styles.resultInfo}>
+                        <p className={styles.resultTitle}>{song.artist}</p>
+                        <p className={styles.resultArtist}>Artist</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {searchResults.playlists.length > 0 && (
+                <div className={styles.resultSection}>
+                  <p className={styles.resultSectionTitle}>Playlists</p>
+                  {searchResults.playlists.map((playlist) => (
+                    <div key={`playlist-${playlist.id}`} className={styles.resultItem} onClick={() => { navigate(`/playlist/${playlist.id}`); closeSearch(); }}>
+                      <div className={styles.resultIcon}>PL</div>
+                      <div className={styles.resultInfo}>
+                        <p className={styles.resultTitle}>{playlist.name}</p>
+                        <p className={styles.resultArtist}>Playlist</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {searchResults.online.length > 0 && (
+                <div className={styles.resultSection}>
+                  <p className={styles.resultSectionTitle}>Online</p>
+                  {searchResults.online.map((song) => (
+                    <div key={`online-${song.id}`} className={styles.resultItem} onClick={() => handleResultClick(song)}>
+                      <SongCover src={song.cover} alt={song.title} size="small" className={styles.resultCover} />
+                      <div className={styles.resultInfo}>
+                        <p className={styles.resultTitle}>{song.title}</p>
+                        <p className={styles.resultArtist}>{song.artist}</p>
+                      </div>
+                      <span className={styles.onlineBadge}>Online</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {searchLoading && <p className={styles.searchState}>Searching online catalog...</p>}
+              {searchError && <p className={styles.searchState}>{searchError}</p>}
+              {!searchLoading && !searchError && Object.values(searchResults).every((items) => items.length === 0) && (
+                <p className={styles.searchState}>No matching songs, artists, playlists, or online tracks.</p>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

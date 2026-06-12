@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { ListMusic, Home, Compass, Radio, Mic2, PlusSquare, Heart, Sparkles, Plus, Globe, Settings as SettingsIcon } from 'lucide-react';
+import { ListMusic, Home, Compass, Radio, Mic2, PlusSquare, Heart, Sparkles, Plus, Globe, Settings as SettingsIcon, ChevronsLeft, ChevronsRight } from 'lucide-react';
 /* eslint-disable-next-line no-unused-vars */
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuthStore } from '../store/authStore';
 import { useMusicStore } from '../store/musicStore';
 import { useUIStore } from '../store/uiStore';
@@ -36,7 +36,9 @@ const Sidebar = () => {
 
   // UI State
   const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
+  const isSidebarCompact = useUIStore((state) => state.isSidebarCompact);
   const closeSidebar = useUIStore((state) => state.closeSidebar);
+  const toggleSidebarCompact = useUIStore((state) => state.toggleSidebarCompact);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState('');
 
@@ -76,12 +78,15 @@ const Sidebar = () => {
         className={`${styles.overlay} ${isSidebarOpen ? styles.visible : ''}`} 
         onClick={closeSidebar}
       />
-      <aside className={`${styles.sidebar} ${isSidebarOpen ? styles.mobileOpen : ''}`}>
+      <aside className={`${styles.sidebar} ${isSidebarOpen ? styles.mobileOpen : ''} ${isSidebarCompact ? styles.compact : ''}`}>
         <div className={styles.logoHeader}>
           <div className={styles.logo}>
             <Sparkles size={24} color="var(--accent-primary)" />
             <span>RhyMic</span>
           </div>
+          <button className={styles.compactToggle} onClick={toggleSidebarCompact} title={isSidebarCompact ? 'Expand sidebar' : 'Compact sidebar'}>
+            {isSidebarCompact ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
+          </button>
         </div>
         
         <motion.nav 

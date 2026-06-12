@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 /* eslint-disable-next-line no-unused-vars */
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useMusicStore } from '../store/musicStore';
 import toast from 'react-hot-toast';
 import { Play, Upload, Trash2, Music, ListPlus, Shuffle } from 'lucide-react';

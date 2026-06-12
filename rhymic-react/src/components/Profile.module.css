@@ -1,21 +1,21 @@
 .profileContainer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: grid;
+  place-items: start center;
   height: 100%;
-  padding: 40px;
+  padding: 36px;
   box-sizing: border-box;
 }
 
 .card {
-  background-color: var(--bg-secondary);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  padding: 40px;
+  border-radius: 8px;
+  padding: 34px;
   width: 100%;
   max-width: 500px;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.24);
 }
 
 .avatarWrapper {
@@ -26,7 +26,7 @@
   cursor: pointer;
   border-radius: 50%;
   overflow: hidden;
-  border: 4px solid var(--bg-primary);
+  border: 3px solid rgba(200, 164, 78, 0.45);
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
@@ -61,7 +61,7 @@
 }
 
 .name {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 700;
   margin: 0 0 8px;
   color: var(--text-primary);

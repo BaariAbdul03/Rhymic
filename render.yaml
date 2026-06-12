@@ -22,6 +22,9 @@ services:
       - key: RESOLVER_PORT
         value: "3001"
 
+      - key: RESOLVER_HOSTPORT
+        value: "127.0.0.1:3001"
+
       - key: WEB_CONCURRENCY
         value: "1"
 

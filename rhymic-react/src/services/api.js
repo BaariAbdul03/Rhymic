@@ -80,10 +80,14 @@ export const moodApi = {
 };
 
 export const streamApi = {
+  status: () => api.get('/stream/status'),
   search: (query) => api.get(`/stream/search?q=${encodeURIComponent(query)}`),
   getAudioUrl: (videoId) => api.get(`/stream/audio/${videoId}`),
   getTrending: () => api.get('/stream/trending'),
   getRelated: (videoId) => api.get(`/stream/related/${videoId}`),
+  getCategories: (names, limit = 10) => api.get(
+    `/stream/categories?names=${encodeURIComponent(names.join(','))}&limit=${limit}`
+  ),
 };
 
 export default api;

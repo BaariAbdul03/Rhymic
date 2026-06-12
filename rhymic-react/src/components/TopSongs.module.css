@@ -18,14 +18,14 @@
 .tableBody {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .tableRow {
   display: flex;
   align-items: center;
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 7px 14px;
+  border-radius: 6px;
   transition: all 0.3s var(--transition-spring);
   background-color: transparent;
   border: 1px solid transparent;
@@ -37,7 +37,6 @@
   -webkit-backdrop-filter: blur(var(--glass-blur));
   border-color: var(--glass-border);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  transform: translateX(4px);
 }
 
 .tableRow.activeRow {
@@ -64,7 +63,7 @@
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
 }
 
@@ -136,7 +135,7 @@
 .songCover {
   width: 40px;
   height: 40px;
-  border-radius: 6px;
+  border-radius: 4px;
   object-fit: cover;
   box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }

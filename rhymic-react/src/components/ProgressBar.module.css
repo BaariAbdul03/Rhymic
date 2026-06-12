@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: space-between;
   height: 100%;
-  padding: 0 24px;
+  padding: 0 22px;
   background: transparent;
   color: var(--text-primary);
   /* The player floats a bit */
@@ -16,8 +16,8 @@
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px);
   z-index: -1;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
 }
@@ -37,11 +37,11 @@
 }
 
 .coverWrapper {
-  width: 60px;
-  height: 60px;
+  width: 54px;
+  height: 54px;
   flex-shrink: 0; /* Prevent squishing */
   position: relative;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   box-shadow: 0 4px 15px rgba(0,0,0,0.4);
 }
@@ -112,7 +112,7 @@
 .controls {
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 18px;
 }
 
 .controlBtn {
@@ -140,8 +140,8 @@
 
 
 .playPauseBtn {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background-color: var(--text-primary);
   color: var(--bg-primary);
@@ -151,7 +151,7 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.3s var(--transition-spring);
-  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
 .playPauseBtn:hover {
   transform: scale(1.1);
@@ -267,7 +267,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 16px;
+  gap: 12px;
   width: 30%;
   min-width: 180px;
 }

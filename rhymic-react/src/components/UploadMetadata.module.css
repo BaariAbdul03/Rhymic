@@ -1,22 +1,19 @@
 .container {
-  padding: 40px;
+  padding: 34px;
   max-width: 1000px;
   margin: 0 auto;
   min-height: calc(100vh - 160px);
 }
 
 .header {
-  margin-bottom: 40px;
+  margin-bottom: 28px;
 }
 
 .header h1 {
-  font-size: clamp(2rem, 5vw, 3rem);
+  font-size: clamp(1.9rem, 4vw, 2.5rem);
   font-weight: 800;
   margin-bottom: 8px;
-  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-primary) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-primary);
 }
 
 .header p {
@@ -28,8 +25,8 @@
   background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(10px);
   border: 2px dashed rgba(200, 164, 78, 0.3);
-  border-radius: 20px;
-  padding: 60px 40px;
+  border-radius: 8px;
+  padding: 44px 34px;
   text-align: center;
   transition: all 0.3s ease;
   cursor: pointer;
@@ -37,13 +34,13 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
 .dropzone:hover {
   background: rgba(200, 164, 78, 0.05);
   border-color: var(--accent-primary);
-  transform: translateY(-5px);
+  transform: translateY(-2px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
@@ -75,7 +72,7 @@
   background: var(--accent-primary);
   color: var(--bg-primary);
   border: none;
-  border-radius: 30px;
+  border-radius: 8px;
   font-weight: 700;
   font-size: 1rem;
   cursor: pointer;
@@ -83,7 +80,7 @@
 }
 
 .uploadBtn:hover {
-  transform: scale(1.05);
+  transform: translateY(-1px);
   filter: brightness(1.1);
 }
 
@@ -110,14 +107,14 @@
   background: var(--accent-primary);
   color: var(--bg-primary);
   border: none;
-  border-radius: 30px;
+  border-radius: 8px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .playAllBtn:hover {
-  transform: scale(1.05);
+  transform: translateY(-1px);
 }
 
 .clearBtn {
@@ -125,7 +122,7 @@
   color: var(--text-secondary);
   border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 10px 20px;
-  border-radius: 30px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -147,7 +144,7 @@
   gap: 16px;
   padding: 12px 20px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
+  border-radius: 8px;
   border: 1px solid transparent;
   transition: all 0.2s ease;
   cursor: default;
@@ -177,7 +174,7 @@
 .cardPlayBtn {
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 8px;
   background: var(--accent-primary);
   color: var(--bg-primary);
   border: none;
@@ -205,7 +202,7 @@
   color: var(--text-secondary);
   cursor: pointer;
   padding: 8px;
-  border-radius: 50%;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -2,10 +2,10 @@
 
 :root {
   /* --- PREMIUM DARK MODE (Match Screenshot) --- */
-  --bg-primary: #0d0d0d;
-  --bg-secondary: #1a1a1a;
-  --bg-tertiary: #242424;
-  --bg-elevated: #2a2a2a;
+  --bg-primary: #0b0c0d;
+  --bg-secondary: #121315;
+  --bg-tertiary: #1c1e21;
+  --bg-elevated: #24272b;
   
   /* Gold/Amber accents */
   --accent-primary: #c8a44e;    /* Gold */
@@ -23,10 +23,10 @@
   --accent-text: #000000;       /* Inside gold buttons */
   
   /* Glass Variables & Liquid Glass additions */
-  --glass-bg: rgba(26, 26, 26, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-hover: rgba(255, 255, 255, 0.12);
-  --glass-blur: 40px;
+  --glass-bg: rgba(18, 19, 21, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.075);
+  --glass-hover: rgba(255, 255, 255, 0.095);
+  --glass-blur: 24px;
   --glass-saturation: 180%;
   --glass-border-glow: rgba(200, 164, 78, 0.15);
   --transition-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -36,7 +36,7 @@
   --overlay-bg: rgba(0,0,0,0.7);
   
   /* Layout variables */
-  --sidebar-width: 240px;
+  --sidebar-width: 248px;
   --right-panel-width: 300px;
   --player-height: 90px;
 }
@@ -47,6 +47,20 @@ body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', sans-serif;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 h1, h2, h3, h4, h5, h6 {

@@ -1,7 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Play, Heart, ListPlus, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useMusicStore } from '../store/musicStore';
 import toast from 'react-hot-toast';
 import SongCover from './SongCover';
@@ -22,19 +23,78 @@ const rowVariants = {
   visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
 };
 
-const TopSongs = ({ limit, hideHeader }) => {
+const formatDuration = (seconds) => {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value <= 0) return '';
+  const mins = Math.floor(value / 60);
+  const secs = Math.floor(value % 60);
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const getKnownDuration = (song) => {
+  const raw = song.duration || song.duration_text || song.length || song.length_text;
+  if (typeof raw === 'string' && raw.includes(':')) return raw;
+  if (typeof raw === 'number') return formatDuration(raw);
+  if (typeof raw === 'string' && raw.trim() && !Number.isNaN(Number(raw))) {
+    return formatDuration(Number(raw));
+  }
+
+  const seconds = song.duration_seconds || song.durationSeconds || song.length_seconds || song.lengthSeconds;
+  return formatDuration(seconds);
+};
+
+const TopSongs = ({ limit, hideHeader, songs: songsOverride }) => {
   const navigate = useNavigate();
-  const songs = useMusicStore((state) => state.songs);
+  const librarySongs = useMusicStore((state) => state.songs);
   const currentSong = useMusicStore((state) => state.currentSong);
   const isPlaying = useMusicStore((state) => state.isPlaying);
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
   const togglePlay = useMusicStore((state) => state.togglePlay);
   const toggleLike = useMusicStore((state) => state.toggleLike);
   const likedSongs = useMusicStore((state) => state.likedSongs);
+  const [metadataDurations, setMetadataDurations] = useState({});
+
+  const songs = songsOverride || librarySongs || [];
+  const displaySongs = limit ? songs.slice(0, limit) : songs;
+
+  useEffect(() => {
+    const pendingSongs = displaySongs.filter((song) => {
+      if (getKnownDuration(song) || metadataDurations[song.id]) return false;
+      return Boolean(song.src || song.url || song.audio_url || song.file_url);
+    });
+
+    if (pendingSongs.length === 0) return undefined;
+
+    const audioElements = pendingSongs.map((song) => {
+      const audio = new Audio();
+      audio.preload = 'metadata';
+      audio.src = song.src || song.url || song.audio_url || song.file_url;
+      audio.onloadedmetadata = () => {
+        const formatted = formatDuration(audio.duration);
+        if (formatted) {
+          setMetadataDurations((current) => ({ ...current, [song.id]: formatted }));
+        }
+      };
+      audio.load();
+      return audio;
+    });
+
+    return () => {
+      audioElements.forEach((audio) => {
+        audio.onloadedmetadata = null;
+        audio.src = '';
+      });
+    };
+  }, [displaySongs, metadataDurations]);
 
   if (!songs || songs.length === 0) return null;
 
-  const displaySongs = limit ? songs.slice(0, limit) : songs;
+  const getDuration = (song) => {
+    const known = getKnownDuration(song);
+    if (known) return known;
+    if (metadataDurations[song.id]) return metadataDurations[song.id];
+    return '--:--';
+  };
 
   const handlePlayClick = (song) => {
     if (currentSong?.id === song.id) {
@@ -112,7 +172,7 @@ const TopSongs = ({ limit, hideHeader }) => {
               </div>
               
               <div className={styles.colTime}>
-                3:14
+                {getDuration(song)}
               </div>
               
               <div className={styles.colAction}>

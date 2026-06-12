@@ -1,6 +1,6 @@
 import React from 'react';
 /* eslint-disable-next-line no-unused-vars */
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 const pageVariants = {
   initial: { opacity: 0, y: 30, scale: 0.98 },

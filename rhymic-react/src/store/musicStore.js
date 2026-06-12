@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
 import { songsApi, playlistsApi, likesApi } from '../services/api';
+import { preloadImages } from '../utils/preloadImages';
 
 export const useMusicStore = create((set, get) => ({
   songs: [],
@@ -13,6 +14,7 @@ export const useMusicStore = create((set, get) => ({
   moodIndex: 0,
   queue: [], // Explicit queue array
   originalQueue: [], // For restoring order when shuffle is off
+  recentlyPlayed: [],
   volume: 1,
   isPlaying: false,
   currentTime: 0,
@@ -76,6 +78,7 @@ export const useMusicStore = create((set, get) => ({
     set({ error: null });
     try {
       const response = await songsApi.getAll();
+      preloadImages(response.data, 24);
       set({ songs: response.data });
     } catch (error) {
       set({ error: error.message });
@@ -254,7 +257,14 @@ export const useMusicStore = create((set, get) => ({
     if (isPlaying) get()._triggerCrossfade(0.15, 0);
     
     // Switch song immediately
-    set({ currentSong: song, isPlaying: true, currentTime: 0 });
+    set((state) => ({
+      currentSong: song,
+      isPlaying: true,
+      currentTime: 0,
+      recentlyPlayed: song
+        ? [song, ...state.recentlyPlayed.filter((item) => item.id !== song.id)].slice(0, 20)
+        : state.recentlyPlayed
+    }));
     if (song) get().fetchSongMood(song);
     
     // Start fading in new song

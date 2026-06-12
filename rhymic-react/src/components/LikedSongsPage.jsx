@@ -4,6 +4,7 @@ import styles from './PlaylistPage.module.css';
 import { useMusicStore } from '../store/musicStore';
 import { Play, Heart, Music2 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import SongCover from './SongCover';
 
 const LikedSongsPage = () => {
   const songs = useMusicStore((state) => state.songs);
@@ -64,11 +65,7 @@ const LikedSongsPage = () => {
             style={{ backgroundImage: `url(${coverImage})` }}
         ></div>
         
-        <img 
-          src={coverImage} 
-          alt="Liked Songs" 
-          className={styles.headerImage} 
-        />
+        <SongCover src={coverImage} alt="Liked Songs" size="large" className={styles.headerImage} />
         
         <div className={styles.headerContent}>
           <span className={styles.type}>Playlist</span>
@@ -114,7 +111,7 @@ const LikedSongsPage = () => {
               >
                 <span className={styles.index}>{index + 1}</span>
                 <div className={styles.songLeft}>
-                  <img loading="lazy" width="48" height="48" src={song.cover} alt={song.title} className={styles.songCover} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = "/placeholder-cover.png"; }} />
+                  <SongCover src={song.cover} alt={song.title} size="small" className={styles.songCover} />
                   <div className={styles.songInfo}>
                     <h4>{song.title}</h4>
                     <p>{song.artist}</p>

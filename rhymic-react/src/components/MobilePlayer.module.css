@@ -14,7 +14,7 @@
   top: -10%; left: -10%; right: -10%; bottom: -10%;
   background-size: cover;
   background-position: center;
-  filter: blur(80px) saturate(200%) brightness(0.6);
+  filter: blur(46px) saturate(140%) brightness(0.58);
   z-index: 0;
   transition: background-image 0.5s ease;
 }
@@ -28,9 +28,8 @@
 .animatedGradientOverlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 30%, rgba(200, 164, 78, 0.2) 0%, transparent 60%),
-              linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.9) 100%);
-  animation: slowColorShift 15s ease-in-out infinite;
+  background: linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.86) 100%);
+  animation: none;
 }
 
 .contentWrapper {
@@ -39,7 +38,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 24px 24px 48px 24px;
+  padding: 20px 22px 38px 22px;
 }
 
 /* Header */
@@ -55,7 +54,7 @@
   border: 1px solid var(--glass-border);
   width: 44px;
   height: 44px;
-  border-radius: 50%;
+  border-radius: 8px;
   color: var(--text-primary);
   display: flex;
   align-items: center;
@@ -63,14 +62,14 @@
   cursor: pointer;
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
   -webkit-backdrop-filter: blur(var(--glass-blur));
-  transition: all 0.3s var(--transition-spring);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  transition: all 0.2s ease;
+  box-shadow: none;
 }
 
 .iconBtn:hover {
   background: var(--glass-hover);
   border-color: var(--glass-border-glow);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  box-shadow: none;
 }
 
 .brand {
@@ -85,7 +84,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 32px;
+  margin-bottom: 26px;
   perspective: 1000px;
 }
 
@@ -99,9 +98,9 @@
 .coverImage {
   width: 100%;
   height: 100%;
-  border-radius: 16px;
+  border-radius: 8px;
   object-fit: cover;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 40px var(--accent-glow);
+  box-shadow: 0 18px 42px rgba(0,0,0,0.58);
 }
 
 /* Info */
@@ -111,11 +110,11 @@
 }
 
 .title {
-  font-size: 2rem;
+  font-size: clamp(1.55rem, 7vw, 2rem);
   font-weight: 800;
   margin: 0 0 8px 0;
   line-height: 1.2;
-  letter-spacing: -0.5px;
+  letter-spacing: 0;
 }
 
 .artist {
@@ -245,8 +244,8 @@
 }
 
 .playBtn {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   background-color: var(--accent-primary);
   color: var(--accent-text);
   border-radius: 50%;
@@ -255,7 +254,7 @@
   justify-content: center;
   border: none;
   cursor: pointer;
-  box-shadow: 0 8px 25px var(--accent-glow);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.32);
 }
 
 .playIconFix {

@@ -1,6 +1,6 @@
 import React, { useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { useMusicStore } from '../store/musicStore';
 import toast from 'react-hot-toast';
 import SongCover from './SongCover';
@@ -21,16 +21,19 @@ const cardVariants = {
   visible: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 260, damping: 20 } }
 };
 
-const CategoryRow = ({ playlist }) => {
+const CategoryRow = ({ playlist, songs: rowOverride }) => {
   const scrollRef = useRef(null);
   
   const songs = useMusicStore((state) => state.songs);
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
-  const playNext = useMusicStore((state) => state.playNext);
   const aiCategories = useMusicStore(state => state.aiCategories);
 
   // Memoize the filtering logic to prevent expensive re-calculations on every render
   const rowSongs = useMemo(() => {
+    if (rowOverride && rowOverride.length > 0) {
+      return rowOverride.slice(0, 10);
+    }
+
     if (!songs || songs.length === 0) return [];
 
     let filtered = [];
@@ -64,9 +67,9 @@ const CategoryRow = ({ playlist }) => {
     }
     
     return filtered;
-  }, [songs, aiCategories, playlist.id, playlist.name, playlist.songs]);
+  }, [songs, rowOverride, aiCategories, playlist.id, playlist.name, playlist.songs]);
 
-  if (!songs || songs.length === 0 || rowSongs.length === 0) return null;
+  if (rowSongs.length === 0) return null;
 
   const scrollLeft = () => {
     if (scrollRef.current) scrollRef.current.scrollBy({ left: -300, behavior: 'smooth' });
@@ -109,7 +112,7 @@ const CategoryRow = ({ playlist }) => {
               variants={cardVariants}
               key={song.id} 
               className={styles.card} 
-              onClick={() => playNext(song)}
+              onClick={() => setCurrentSong(song)}
               whileHover={{ y: -8, scale: 1.02 }}
             >
               <div className={styles.coverContainer}>
@@ -124,7 +127,10 @@ const CategoryRow = ({ playlist }) => {
                 </div>
               </div>
               <h3 className={styles.songTitle}>{song.title}</h3>
-              <p className={styles.songArtist}>{song.artist}</p>
+              <div className={styles.songMeta}>
+                <p className={styles.songArtist}>{song.artist}</p>
+                {song.source === 'online' && <span className={styles.sourceBadge}>Online</span>}
+              </div>
             </motion.div>
           ))}
         </motion.div>

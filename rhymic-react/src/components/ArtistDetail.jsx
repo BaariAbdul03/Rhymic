@@ -87,7 +87,7 @@ const ArtistDetail = () => {
         
         <div className={styles.heroContent}>
           <div className={styles.verifiedBadge}>
-            ✓ Verified Artist
+            Verified Artist
           </div>
           <h1 className={styles.artistName}>{decodedName}</h1>
           <p className={styles.monthlyListeners}>

@@ -16,7 +16,7 @@
 .modalContent {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 8px;
   width: 90%;
   max-width: 400px;
   box-shadow: 0 10px 30px var(--shadow-color);

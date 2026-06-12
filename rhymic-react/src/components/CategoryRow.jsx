@@ -1,6 +1,6 @@
 import React, { useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
 import toast from 'react-hot-toast';
 import SongCover from './SongCover';

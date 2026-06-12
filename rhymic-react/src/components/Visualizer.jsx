@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 /* eslint-disable-next-line no-unused-vars */
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, Activity, BarChart2, CircleDashed, Sparkles } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import { useVisualizer } from '../hooks/useVisualizer';

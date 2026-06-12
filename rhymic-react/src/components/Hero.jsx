@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Play, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 /* eslint-disable-next-line no-unused-vars */
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
 import { streamApi } from '../services/api';
 import SongCover from './SongCover';

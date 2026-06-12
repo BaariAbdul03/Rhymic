@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { ListMusic, Home, Compass, Radio, Mic2, PlusSquare, Heart, Sparkles, Plus, Globe, Settings as SettingsIcon, ChevronsLeft, ChevronsRight } from 'lucide-react';
 /* eslint-disable-next-line no-unused-vars */
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
 import { useMusicStore } from '../store/musicStore';
 import { useUIStore } from '../store/uiStore';

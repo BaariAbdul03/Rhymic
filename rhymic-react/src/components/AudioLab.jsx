@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 /* eslint-disable-next-line no-unused-vars */
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { X, SlidersHorizontal, Settings2, Speaker } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import { useMusicStore } from '../store/musicStore';

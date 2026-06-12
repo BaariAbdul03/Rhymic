@@ -1,20 +1,53 @@
 from flask import Blueprint, jsonify, request, Response
 from flask_jwt_extended import jwt_required
-import re
-import yt_dlp
 from ytmusicapi import YTMusic
 import requests as py_requests
 import threading
+import time
+from backend.services.online_provider import get_audio_stream_url, get_online_provider_status
 
 # Global locks and memory cache to prevent "disappearing" thumbnails due to race conditions
 _thumbnail_lock = threading.Lock()
 _fetch_locks = {} # Per-hash locks
 _memory_cache = {} # Hot cache for this process session
+_category_cache = {}
+_CATEGORY_CACHE_TTL = 1800
 
 stream_bp = Blueprint('stream', __name__)
 
 # Singleton YTMusic instance (no auth needed for public search)
 ytmusic = YTMusic()
+
+CATEGORY_QUERIES = {
+    "Hindi": "latest hindi bollywood official songs",
+    "English": "popular english pop official audio",
+    "Rap": "popular rap hip hop official songs",
+    "Modern": "modern pop hits official audio",
+    "Retro Classics": "retro classic official songs",
+    "Romantic": "romantic love official songs",
+    "Chill": "chill lofi official songs",
+    "Workout": "workout energetic official songs",
+    "Focus": "focus instrumental official songs",
+}
+
+BLOCKED_ONLINE_TERMS = (
+    "mashup", "party mashup", "non stop", "non-stop", "jukebox", "dj mix",
+    "mega mix", "megamix", "remix", "slowed", "reverb", "nightcore",
+    "karaoke", "cover version", "instrumental karaoke", "reaction"
+)
+
+
+def _is_low_quality_song(item):
+    title = item.get('title') or ''
+    artists = " ".join([a.get('name', '') for a in item.get('artists', []) if a.get('name')])
+    album = item.get('album') or {}
+    album_name = album.get('name', '') if isinstance(album, dict) else ''
+    text = f"{title} {artists} {album_name}".lower()
+    if any(term in text for term in BLOCKED_ONLINE_TERMS):
+        return True
+    if not item.get('duration'):
+        return True
+    return False
 
 def fix_thumbnail(url):
     """
@@ -51,86 +84,55 @@ def fix_thumbnail(url):
         
     return url
 
-def resolve_piped_fallback(video_id):
-    """Fallback: Resolve stream via a public Piped instance if yt-dlp is blocked."""
-    # List of reliable public Piped instances
-    instances = [
-        "https://pipedapi.kavin.rocks",
-        "https://pipedapi.tokhmi.xyz",
-        "https://api.piped.privacydev.net"
-    ]
-    for base_url in instances:
-        try:
-            resp = py_requests.get(f"{base_url}/streams/{video_id}", timeout=5)
-            if resp.status_code == 200:
-                data = resp.json()
-                audio_streams = data.get('audioStreams', [])
-                if audio_streams:
-                    # Pick the highest quality m4a/mp4 stream
-                    best = sorted(audio_streams, key=lambda x: x.get('bitrate', 0), reverse=True)[0]
-                    return best.get('url'), "m4a (piped)"
-        except Exception:
-            continue
-    return None, None
 
-# Global cache for resolved stream URLs to make seeking/resuming instant
-# videoId -> (url, format, expiry_timestamp)
-_stream_cache = {}
-_STREAM_CACHE_MAX = 500
+def _format_ytmusic_song(item, category=None):
+    video_id = item.get('videoId')
+    if not video_id or _is_low_quality_song(item):
+        return None
 
-def get_audio_stream_url(video_id):
-    """
-    Two-Tiered Resolution with Caching:
-    1. Check memory cache (valid for 2 hours).
-    2. Primarily uses yt-dlp with client spoofing.
-    3. Fallbacks to Piped API.
-    """
-    import time
-    now = time.time()
-    
-    # Check cache first
-    if video_id in _stream_cache:
-        url, fmt, expiry = _stream_cache[video_id]
-        if now < expiry:
-            return url, fmt
-            
-    url = f"https://music.youtube.com/watch?v={video_id}"
-    
-    # Tier 1: yt-dlp with spoofing
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'quiet': True,
-        'no_warnings': True,
-        'noplaylist': True,
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web_embedded'],
-                'skip': ['hls', 'dash']
-            }
-        },
-        'socket_timeout': 10
+    artists = ", ".join([a.get('name', '') for a in item.get('artists', []) if a.get('name')])
+    thumbs = item.get('thumbnails', [])
+    album = item.get('album', {})
+
+    return {
+        "id": video_id,
+        "title": item.get('title'),
+        "artist": artists or "Unknown Artist",
+        "cover": fix_thumbnail(thumbs[-1]['url']) if thumbs else '',
+        "duration": item.get('duration'),
+        "album": album.get('name') if album else None,
+        "source": "online",
+        "src": f"/api/stream/proxy/{video_id}",
+        "genre": category,
+        "category": category,
     }
-    
-    res_url, res_fmt = None, None
-    
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
-            res_url, res_fmt = info.get('url'), info.get('format')
-    except Exception as e:
-        print(f"[yt-dlp Resolution Failed] {video_id}: {e}")
-        # Tier 2: Piped Fallback
-        res_url, res_fmt = resolve_piped_fallback(video_id)
-        
-    if res_url:
-        # Evict oldest entry if cache is full
-        if len(_stream_cache) >= _STREAM_CACHE_MAX:
-            oldest_key = min(_stream_cache, key=lambda k: _stream_cache[k][2])
-            del _stream_cache[oldest_key]
-        # Cache for 2 hours (YouTube links usually last 6, but we'll be safe)
-        _stream_cache[video_id] = (res_url, res_fmt, now + 7200)
-        
-    return res_url, res_fmt
+
+
+def _search_category(category, limit=10):
+    query = CATEGORY_QUERIES.get(category, f"{category} songs")
+    cache_key = f"{category}:{limit}"
+    cached = _category_cache.get(cache_key)
+    now = time.time()
+    if cached and now < cached["expires"]:
+        return cached["songs"]
+
+    raw = ytmusic.search(query, filter="songs", limit=max(limit * 3, 20))
+    songs = []
+    seen = set()
+    for item in raw:
+        song = _format_ytmusic_song(item, category)
+        if not song or song["id"] in seen:
+            continue
+        seen.add(song["id"])
+        songs.append(song)
+        if len(songs) >= limit:
+            break
+
+    _category_cache[cache_key] = {
+        "songs": songs,
+        "expires": now + _CATEGORY_CACHE_TTL,
+    }
+    return songs
 
 @stream_bp.route('/search', methods=['GET'])
 @jwt_required()
@@ -142,31 +144,54 @@ def search_online():
     try:
         # filter="songs" guarantees ONLY official songs from YouTube Music catalog
         # This eliminates the video/cover/fan-upload problem entirely
-        raw = ytmusic.search(query, filter="songs")
+        raw = ytmusic.search(f"{query} official song", filter="songs", limit=25)
         
         results = []
-        for item in raw[:15]:
-            artists = ", ".join([a['name'] for a in item.get('artists', [])])
-            thumbs = item.get('thumbnails', [])
-            # Use highest-res thumbnail available
-            cover = fix_thumbnail(thumbs[-1]['url']) if thumbs else ''
-            
-            album = item.get('album', {})
-            
-            results.append({
-                "id": item.get('videoId'),
-                "title": item.get('title'),
-                "artist": artists,
-                "cover": cover,
-                "duration": item.get('duration'),
-                "album": album.get('name') if album else None,
-                "source": "online"
-            })
+        for item in raw:
+            song = _format_ytmusic_song(item)
+            if song:
+                results.append(song)
+            if len(results) >= 15:
+                break
             
         return jsonify(results), 200
     except Exception as e:
         print(f"[Stream Search Error] {e}")
         return jsonify({"message": "Search failed. Please try again."}), 500
+
+@stream_bp.route('/status', methods=['GET'])
+@jwt_required()
+def stream_status():
+    return jsonify(get_online_provider_status()), 200
+
+@stream_bp.route('/categories', methods=['GET'])
+@jwt_required()
+def get_online_categories():
+    """Returns online songs grouped by the requested Discover categories."""
+    names_param = request.args.get('names', '')
+    categories = [name.strip() for name in names_param.split(',') if name.strip()]
+    if not categories:
+        categories = ["Hindi", "English", "Rap", "Modern", "Retro Classics", "Romantic"]
+    categories = categories[:12]
+
+    limit = request.args.get('limit', 10, type=int)
+    limit = max(1, min(limit, 15))
+
+    grouped = {}
+    errors = {}
+    for category in categories:
+        try:
+            grouped[category] = _search_category(category, limit=limit)
+        except Exception as exc:
+            print(f"[Stream Categories Error] {category}: {exc}")
+            grouped[category] = []
+            errors[category] = "unavailable"
+
+    return jsonify({
+        "categories": grouped,
+        "errors": errors,
+        "source": "online"
+    }), 200
 
 @stream_bp.route('/audio/<video_id>', methods=['GET'])
 @jwt_required()
@@ -190,8 +215,9 @@ def proxy_audio(video_id):
     Supports HTTP Range requests for seeking.
     """
     try:
-        audio_url, _ = get_audio_stream_url(video_id)
+        audio_url, fmt = get_audio_stream_url(video_id)
         if not audio_url:
+            print(f"[Stream Proxy] All layers returned None for {video_id} — returning 404")
             return Response("Not found", status=404)
         
         # Forward Range header for seeking support
@@ -391,24 +417,15 @@ def _redirect_to_image(primary_url, fallback_url=None):
 def get_trending():
     """Returns trending songs from YouTube Music charts."""
     try:
-        raw = ytmusic.search("trending music 2025", filter="songs")
+        raw = ytmusic.search("trending official songs 2026", filter="songs", limit=35)
         
         results = []
-        for item in raw[:15]:
-            artists = ", ".join([a['name'] for a in item.get('artists', [])])
-            thumbs = item.get('thumbnails', [])
-            cover = fix_thumbnail(thumbs[-1]['url']) if thumbs else ''
-            album = item.get('album', {})
-            
-            results.append({
-                "id": item.get('videoId'),
-                "title": item.get('title'),
-                "artist": artists,
-                "cover": cover,
-                "duration": item.get('duration'),
-                "album": album.get('name') if album else None,
-                "source": "online"
-            })
+        for item in raw:
+            song = _format_ytmusic_song(item, "Trending")
+            if song:
+                results.append(song)
+            if len(results) >= 15:
+                break
         return jsonify(results), 200
     except Exception as e:
         print(f"[Trending Error] {e}")
@@ -424,6 +441,10 @@ def get_related(video_id):
         
         results = []
         for t in tracks[:25]:
+            title = t.get('title') or ''
+            artist_text = " ".join([a.get('name', '') for a in t.get('artists', [])])
+            if not t.get('videoId') or any(term in f"{title} {artist_text}".lower() for term in BLOCKED_ONLINE_TERMS):
+                continue
             artists = ", ".join([a['name'] for a in t.get('artists', [])])
             # Handle both 'thumbnail' and 'thumbnails' keys
             thumbs = t.get('thumbnail') or t.get('thumbnails') or []
@@ -441,7 +462,8 @@ def get_related(video_id):
                 "artist": artists,
                 "cover": cover,
                 "duration": t.get('length') or t.get('duration'),
-                "source": "online"
+                "source": "online",
+                "src": f"/api/stream/proxy/{t.get('videoId')}"
             })
         return jsonify(results), 200
     except Exception as e:

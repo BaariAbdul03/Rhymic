@@ -172,7 +172,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', initialized: innertube !== null, authenticated: innertube?.session?.logged_in || false });
 });
 
-// ── Main resolver endpoint ────────────────────────────────────────────────────
+  // ── Main resolver endpoint ────────────────────────────────────────────────────
 app.get('/resolve/:videoId', requireAuth, async (req, res) => {
   const { videoId } = req.params;
   
@@ -183,7 +183,8 @@ app.get('/resolve/:videoId', requireAuth, async (req, res) => {
   console.log(`[Resolver] Resolving: ${videoId}`);
   
   // Try different clients in order of reliability
-  const clients = ['TV_EMBEDDED', 'ANDROID', 'YTMUSIC'];
+  // ANDROID_MUSIC bypasses signature decipher entirely (pre-signed URLs)
+  const clients = ['ANDROID_MUSIC', 'ANDROID', 'TV_EMBEDDED', 'YTMUSIC'];
   let lastError = null;
 
   for (const clientType of clients) {
@@ -215,10 +216,24 @@ app.get('/resolve/:videoId', requireAuth, async (req, res) => {
       // Sort by bitrate (highest first)
       audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
       
-      // Try to decipher the best format
+      // Try up to 3 best formats
       for (const format of audioFormats.slice(0, 3)) {
         try {
-          const streamUrl = format.decipher(yt.session.player);
+          // First try to decipher (for encrypted streams)
+          let streamUrl = null;
+          try {
+            streamUrl = format.decipher(yt.session.player);
+          } catch (decipherErr) {
+            // Decipher failed (e.g., player JS not extracted) — try raw URL
+            console.warn(`[Resolver] Decipher failed, trying raw URL: ${decipherErr.message}`);
+          }
+          
+          // Fall back to the pre-signed URL if available (ANDROID_MUSIC / ANDROID clients)
+          if (!streamUrl && format.url) {
+            streamUrl = format.url;
+            console.log(`[Resolver] Using pre-signed URL (no decipher needed).`);
+          }
+
           if (streamUrl) {
             console.log(`[Resolver] SUCCESS (${clientType}): ${format.mime_type}, ${format.bitrate}bps`);
             return res.json({
@@ -229,7 +244,7 @@ app.get('/resolve/:videoId', requireAuth, async (req, res) => {
             });
           }
         } catch (e) {
-          console.warn(`[Resolver] Decipher failed for format on ${clientType}: ${e.message}`);
+          console.warn(`[Resolver] Format processing failed on ${clientType}: ${e.message}`);
         }
       }
     } catch (err) {

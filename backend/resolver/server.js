@@ -248,6 +248,9 @@ app.get('/resolve/:videoId', requireAuth, async (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`[Resolver] Running on port ${PORT}`);
+// Bind to 127.0.0.1 (localhost only) so Render's external port scanner
+// does not detect this internal service and trigger a network reconfiguration
+// restart. Only Gunicorn on 0.0.0.0:$PORT is the public-facing process.
+app.listen(PORT, '127.0.0.1', () => {
+  console.log(`[Resolver] Running on 127.0.0.1:${PORT}`);
 });

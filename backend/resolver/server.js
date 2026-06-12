@@ -31,125 +31,103 @@ async function getInnertube() {
   if (!innertube || Date.now() - innertubeInitTime > INNERTUBE_TTL) {
     console.log('[Resolver] Initializing Innertube...');
     const b64Oauth = process.env.YT_OAUTH_CREDENTIALS;
-    const b64Cookies = process.env.YT_COOKIES_B64;
-    
-    // Attempt OAuth first if configured
+
+    // ── 1. Use saved OAuth credentials (best, skips device flow) ─────────────
     if (b64Oauth) {
-        try {
-            const credentials = JSON.parse(Buffer.from(b64Oauth, 'base64').toString('utf-8'));
-            innertube = await Innertube.create({
-                client_type: 'TV_EMBEDDED',
-                generate_session_locally: true,
-            });
-            await innertube.session.signIn(credentials);
-            if (typeof innertube.session.oauth.cacheCredentials === 'function') {
-                await innertube.session.oauth.cacheCredentials();
-            }
-            console.log('[Resolver] Innertube initialized with TV_EMBEDDED OAuth2.');
-        } catch (err) {
-            console.error('[Resolver] OAuth init failed:', err.message);
-            innertube = null; // Fallback
+      try {
+        const credentials = JSON.parse(Buffer.from(b64Oauth, 'base64').toString('utf-8'));
+        innertube = await Innertube.create({
+          client_type: 'TV_EMBEDDED',
+          generate_session_locally: true,
+        });
+        await innertube.session.signIn(credentials);
+        if (typeof innertube.session.oauth.cacheCredentials === 'function') {
+          await innertube.session.oauth.cacheCredentials();
         }
-    }
-    
-    // Attempt Cookie Fallback
-    if (!innertube && b64Cookies) {
-        try {
-            const cookieData = Buffer.from(b64Cookies, 'base64').toString('utf-8');
-            const cookieString = cookieData.split('\n')
-                .map(line => line.trim())
-                .filter(line => line && (!line.startsWith('#') || line.startsWith('#HttpOnly_')))
-                .map(line => {
-                    const cleanLine = line.startsWith('#HttpOnly_') ? line.substring(10) : line;
-                    const parts = cleanLine.split('\t');
-                    if (parts.length >= 7) {
-                        return `${parts[5]}=${parts[6]}`;
-                    }
-                    return null;
-                })
-                .filter(Boolean)
-                .join('; ');
-            innertube = await Innertube.create({
-                client_type: 'ANDROID',
-                cookie: cookieString,
-                generate_session_locally: true,
-            });
-            console.log('[Resolver] Innertube initialized with ANDROID + Cookies.');
-        } catch (err) {
-            console.error('[Resolver] Cookie init failed:', err.message);
-            innertube = null;
-        }
+        console.log('[Resolver] Innertube initialized with TV_EMBEDDED OAuth2.');
+      } catch (err) {
+        console.error('[Resolver] OAuth init failed:', err.message);
+        innertube = null;
+      }
     }
 
-    // Attempt Device Flow if no credentials configured at all
-    if (!innertube && !b64Oauth && !b64Cookies) {
-         console.log('[Resolver] Initiating OAuth2 TV Device Flow...');
-         innertube = await Innertube.create({
-             client_type: 'TV_EMBEDDED',
-             generate_session_locally: true,
-         });
-         innertube.session.on('auth-pending', (data) => {
-             console.log('\n\n======================================================');
-             console.log('[Resolver] ACTION REQUIRED:');
-             console.log(`[Resolver] 1. Go to: ${data.verification_url}`);
-             console.log(`[Resolver] 2. Enter code: ${data.user_code}`);
-             console.log('======================================================\n\n');
-         });
-         innertube.session.on('auth', ({ credentials }) => {
-             console.log('[Resolver] OAuth2: Authenticated!');
-             const b64 = Buffer.from(JSON.stringify(credentials)).toString('base64');
-             console.log('\n======================================================');
-             console.log('IMPORTANT: SAVE THE FOLLOWING AS YT_OAUTH_CREDENTIALS');
-             console.log('WARNING: This grants access to your YouTube account.');
-             console.log(b64);
-             console.log('======================================================\n');
-         });
-         innertube.session.on('update-credentials', ({ credentials }) => {
-             console.log('[Resolver] OAuth2 credentials refreshed.');
-             const b64 = Buffer.from(JSON.stringify(credentials)).toString('base64');
-             console.log('\n======================================================');
-             console.log('IMPORTANT: UPDATE YT_OAUTH_CREDENTIALS WITH THIS NEW VALUE');
-             console.log(b64);
-             console.log('======================================================\n');
-         });
-         await innertube.session.signIn();
-    }
-    
-    // Final unauthenticated fallback
-    if (!innertube) {
-        console.log('[Resolver] Fallback to unauthenticated ANDROID client.');
+    // ── 2. No OAuth credentials → ALWAYS run device flow ─────────────────────
+    // Cookies alone do not work on datacenter IPs. YouTube blocks at the
+    // network level regardless of cookie validity. The TV device flow creates
+    // a proper OAuth session YouTube trusts from any IP, including cloud infra.
+    if (!innertube && !b64Oauth) {
+      console.log('[Resolver] No YT_OAUTH_CREDENTIALS found. Starting OAuth2 TV Device Flow...');
+      console.log('[Resolver] NOTE: Once authorized, save the Base64 output as YT_OAUTH_CREDENTIALS.');
+      try {
         innertube = await Innertube.create({
-             client_type: 'ANDROID',
-             generate_session_locally: true,
+          client_type: 'TV_EMBEDDED',
+          generate_session_locally: true,
         });
+        innertube.session.on('auth-pending', (data) => {
+          console.log('\n\n======================================================');
+          console.log('[Resolver] ACTION REQUIRED: Authorize this service!');
+          console.log(`[Resolver] 1. Open in browser: ${data.verification_url}`);
+          console.log(`[Resolver] 2. Enter code:      ${data.user_code}`);
+          console.log('[Resolver] Use a BURNER Google account!');
+          console.log('======================================================\n\n');
+        });
+        innertube.session.on('auth', ({ credentials }) => {
+          console.log('[Resolver] OAuth2: Successfully authenticated!');
+          const b64 = Buffer.from(JSON.stringify(credentials)).toString('base64');
+          console.log('\n======================================================');
+          console.log('[Resolver] SAVE THIS AS YT_OAUTH_CREDENTIALS ENV VAR:');
+          console.log(b64);
+          console.log('======================================================\n');
+        });
+        innertube.session.on('update-credentials', ({ credentials }) => {
+          console.log('[Resolver] OAuth2 credentials refreshed.');
+          const b64 = Buffer.from(JSON.stringify(credentials)).toString('base64');
+          console.log('\n======================================================');
+          console.log('[Resolver] UPDATE YT_OAUTH_CREDENTIALS WITH THIS VALUE:');
+          console.log(b64);
+          console.log('======================================================\n');
+        });
+        await innertube.session.signIn();
+      } catch (err) {
+        console.error('[Resolver] Device flow failed:', err.message);
+        innertube = null;
+      }
+    }
+
+    // ── 3. Final unauthenticated fallback ─────────────────────────────────────
+    if (!innertube) {
+      console.log('[Resolver] Fallback to unauthenticated ANDROID client.');
+      innertube = await Innertube.create({
+        client_type: 'ANDROID',
+        generate_session_locally: true,
+      });
     }
 
     innertubeInitTime = Date.now();
     console.log('[Resolver] Innertube initialization complete.');
 
-    // Setup proactive refresh check
+    // Proactive OAuth token refresh (every 60 seconds)
     if (refreshInterval) clearInterval(refreshInterval);
     refreshInterval = setInterval(async () => {
-        try {
-            if (innertube && innertube.session.logged_in) {
-                const tokens = innertube.session.oauth?.oauth2_tokens || innertube.session.oauth?.credentials;
-                const expiryStr = tokens?.expiry_date || tokens?.expiry;
-                if (expiryStr) {
-                    const expiryTime = new Date(expiryStr).getTime();
-                    // Refresh if within 5 minutes of expiry
-                    if (Date.now() > expiryTime - 5 * 60 * 1000) {
-                        console.log('[Resolver] Proactively refreshing OAuth credentials...');
-                        if (typeof innertube.session.oauth.refreshAccessToken === 'function') {
-                            await innertube.session.oauth.refreshAccessToken();
-                        } else if (typeof innertube.session.oauth.refreshIfRequired === 'function') {
-                            await innertube.session.oauth.refreshIfRequired();
-                        }
-                    }
-                }
+      try {
+        if (innertube && innertube.session.logged_in) {
+          const tokens = innertube.session.oauth?.oauth2_tokens || innertube.session.oauth?.credentials;
+          const expiryStr = tokens?.expiry_date || tokens?.expiry;
+          if (expiryStr) {
+            const expiryTime = new Date(expiryStr).getTime();
+            if (Date.now() > expiryTime - 5 * 60 * 1000) {
+              console.log('[Resolver] Proactively refreshing OAuth credentials...');
+              if (typeof innertube.session.oauth.refreshAccessToken === 'function') {
+                await innertube.session.oauth.refreshAccessToken();
+              } else if (typeof innertube.session.oauth.refreshIfRequired === 'function') {
+                await innertube.session.oauth.refreshIfRequired();
+              }
             }
-        } catch (e) {
-            console.error('[Resolver] Proactive refresh failed:', e.message);
+          }
         }
+      } catch (e) {
+        console.error('[Resolver] Proactive refresh failed:', e.message);
+      }
     }, 60 * 1000);
   }
   return innertube;

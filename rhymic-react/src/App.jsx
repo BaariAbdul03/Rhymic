@@ -1,6 +1,6 @@
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 
 import Sidebar from './components/Sidebar';
@@ -154,7 +154,7 @@ const AppContent = () => {
       {/* Global Error Toast */}
       <AnimatePresence>
         {error && (
-          <motion.div 
+          <Motion.div
             className={styles.errorToast}
             initial={{ opacity: 0, y: 50, x: '-50%' }}
             animate={{ opacity: 1, y: 0, x: '-50%' }}
@@ -162,7 +162,7 @@ const AppContent = () => {
           >
             <div className={styles.errorIcon}>!</div>
             <span>{error}</span>
-          </motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </div>

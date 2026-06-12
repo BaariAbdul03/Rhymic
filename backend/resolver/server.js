@@ -183,15 +183,16 @@ app.get('/resolve/:videoId', requireAuth, async (req, res) => {
   console.log(`[Resolver] Resolving: ${videoId}`);
   
   // Try different clients in order of reliability
-  // ANDROID_MUSIC bypasses signature decipher entirely (pre-signed URLs)
-  const clients = ['ANDROID_MUSIC', 'ANDROID', 'TV_EMBEDDED', 'YTMUSIC'];
+  // iOS currently returns directly usable audio formats for public music
+  // videos. Keep authenticated Android/TV clients as fallbacks.
+  const clients = ['IOS', 'ANDROID', 'YTMUSIC_ANDROID', 'TV_EMBEDDED'];
   let lastError = null;
 
   for (const clientType of clients) {
     try {
       console.log(`[Resolver] Attempting with client: ${clientType}`);
       const yt = await getInnertube();
-      const info = await yt.getBasicInfo(videoId, clientType);
+      const info = await yt.getBasicInfo(videoId, { client: clientType });
       
       const streamingData = info.streaming_data;
       if (!streamingData) {
@@ -222,7 +223,7 @@ app.get('/resolve/:videoId', requireAuth, async (req, res) => {
           // First try to decipher (for encrypted streams)
           let streamUrl = null;
           try {
-            streamUrl = format.decipher(yt.session.player);
+            streamUrl = await format.decipher(yt.session.player);
           } catch (decipherErr) {
             // Decipher failed (e.g., player JS not extracted) — try raw URL
             console.warn(`[Resolver] Decipher failed, trying raw URL: ${decipherErr.message}`);

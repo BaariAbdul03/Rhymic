@@ -6,8 +6,6 @@ from .ai import ai_bp
 from .artists import artists_bp
 from .mood import mood_bp
 from .stream import stream_bp
-from sqlalchemy import text
-from backend.extensions import db
 
 def register_routes(app):
     app.register_blueprint(auth_bp, url_prefix='/api')
@@ -18,11 +16,3 @@ def register_routes(app):
     app.register_blueprint(artists_bp, url_prefix='/api/artists')
     app.register_blueprint(mood_bp, url_prefix='/api/mood')
     app.register_blueprint(stream_bp, url_prefix='/api/stream')
-
-    @app.route('/api/health')
-    def health():
-        try:
-            db.session.execute(text("SELECT 1"))
-            return {"status": "ok", "db": "connected"}, 200
-        except Exception:
-            return {"status": "error", "db": "disconnected"}, 503

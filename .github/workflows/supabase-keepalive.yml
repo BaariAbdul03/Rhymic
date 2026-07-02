@@ -2,58 +2,38 @@ name: Supabase Keep Alive
 
 on:
   schedule:
-    - cron: '0 3 * * *'
+    # Run twice daily at 00:00 and 12:00 UTC to guarantee Supabase stays active
+    - cron: '0 0,12 * * *'
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
 
 jobs:
   keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase REST API
-        run: |
-          # Resolve Supabase URL: secret first, then default to the active project URL
-          URL="${{ secrets.SUPABASE_URL }}"
-          if [ -z "$URL" ]; then
-            URL="https://vbvlyjqgzvpejxnmyssa.supabase.co"
-          fi
-          
-          # Resolve Supabase Key: check service key first, then anon key, then generic key
-          KEY="${{ secrets.SUPABASE_SERVICE_KEY }}"
-          if [ -z "$KEY" ]; then
-            KEY="${{ secrets.SUPABASE_ANON_KEY }}"
-          fi
-          if [ -z "$KEY" ]; then
-            KEY="${{ secrets.SUPABASE_KEY }}"
-          fi
-          
-          if [ -z "$KEY" ]; then
-            echo "::warning::No Supabase API Key found in secrets. Attempting anonymous ping..."
-          fi
-          
-          echo "Pinging Supabase REST API at $URL..."
-          
-          # Ping the OpenAPI description endpoint which forces PostgREST schema refresh and DB contact
-          response_code=$(curl -s -o /dev/null -w "%{http_code}" "$URL/rest/v1/" \
-            -H "apikey: $KEY" \
-            -H "Authorization: Bearer $KEY")
-          
-          echo "REST API response code: $response_code"
-          if [ "$response_code" -eq 200 ] || [ "$response_code" -eq 401 ] || [ "$response_code" -eq 404 ]; then
-            echo "Successfully contacted Supabase! (HTTP $response_code)"
-          else
-            echo "::warning::Received unexpected response code $response_code"
-          fi
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      - name: Ping Supabase Database (PostgreSQL)
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install psycopg2-binary requests python-dotenv
+
+      - name: Execute Supabase Keep-Alive Ping
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
-          if [ -n "$DATABASE_URL" ]; then
-            echo "DATABASE_URL found in secrets. Initiating direct PostgreSQL ping..."
-            # Execute a simple lightweight query to keep the database active
-            psql "$DATABASE_URL" -c "SELECT 1;"
-            echo "PostgreSQL query completed successfully!"
-          else
-            echo "No DATABASE_URL secret found. Skipping direct PostgreSQL ping."
-          fi
+          python keep_alive.py
 
+      - name: Keepalive Workflow (Prevent GitHub Action Auto-Disable)
+        uses: gautamkrishnar/keepalive-workflow@v2

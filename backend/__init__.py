@@ -10,6 +10,8 @@ from backend.utils.errors import register_error_handlers
 from backend.services.scanner import scan_library
 from backend.services.metadata_fixer import auto_fix_metadata
 from backend.services.online_provider import get_online_provider_status
+from backend.services.keepalive import start_background_keepalive
+
 
 def create_app(config_name=None):
     if config_name is None:
@@ -153,7 +155,11 @@ def _initialize_app(app):
             # Scan Library (Fast)
             scan_library(app)
 
+            # Start background Supabase keep-alive thread
+            start_background_keepalive()
+
             # Background Metadata Fixer (Slow). Disabled by default in production
+
             # so multiple web workers do not duplicate Gemini calls.
             if os.getenv("GOOGLE_API_KEY") and os.getenv("ENABLE_METADATA_FIXER", "false").lower() == "true":
                 def run_background_fix():

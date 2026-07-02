@@ -1,8 +1,7 @@
 import pytest
 from backend import create_app
-from backend.extensions import db
+from backend.extensions import db, bcrypt
 from backend.models.user import User
-from backend.models.song import Song
 
 @pytest.fixture
 def app():
@@ -24,14 +23,17 @@ def runner(app):
 @pytest.fixture
 def auth_headers(client, app):
     with app.app_context():
-        user = User(name='Test User', email='test@example.com')
-        user.set_password('password123')
+        user = User(
+            name='TestUser',
+            email='test@example.com',
+            password=bcrypt.generate_password_hash('password123').decode('utf-8')
+        )
         db.session.add(user)
         db.session.commit()
         
-        response = client.post('/api/auth/login', json={
+        response = client.post('/api/login', json={
             'email': 'test@example.com',
             'password': 'password123'
         })
-        token = response.json['access_token']
+        token = response.json['token']
         return {'Authorization': f'Bearer {token}'}

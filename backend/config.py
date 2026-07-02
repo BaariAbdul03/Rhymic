@@ -5,7 +5,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def _verify_database_url(url):
+def _normalize_database_url(url):
+    if url and url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql://", 1)
+    return url
+
+
+def _verify_database_url(url, allow_fallback=True):
     """
     Test if the configured database URL is reachable.
     Returns the URL if healthy, or None if the database is unreachable
@@ -24,6 +30,8 @@ def _verify_database_url(url):
         return url
     except Exception as e:
         print(f"[DB] WARNING: PostgreSQL unreachable ({type(e).__name__}: {e})")
+        if not allow_fallback:
+            raise RuntimeError("Configured DATABASE_URL is unreachable in production.") from e
         print("[DB] Falling back to local SQLite database.")
         return None
 
@@ -34,9 +42,7 @@ class Config:
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-jwt-secret-do-not-use-in-prod')
     
     # DB Config — with automatic fallback if PostgreSQL is unreachable
-    _raw_database_url = os.environ.get('DATABASE_URL')
-    if _raw_database_url and _raw_database_url.startswith("postgres://"):
-        _raw_database_url = _raw_database_url.replace("postgres://", "postgresql://", 1)
+    _raw_database_url = _normalize_database_url(os.environ.get('DATABASE_URL'))
 
     _verified_url = _verify_database_url(_raw_database_url)
     SQLALCHEMY_DATABASE_URI = _verified_url or 'sqlite:///site.db'
@@ -66,7 +72,14 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
-    # Ensure strong secret key in production
+    SECRET_KEY = os.environ.get('SECRET_KEY') or os.environ.get('JWT_SECRET_KEY')
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
+
+    _raw_database_url = _normalize_database_url(os.environ.get('DATABASE_URL'))
+    SQLALCHEMY_DATABASE_URI = _raw_database_url
+    USING_SQLITE_FALLBACK = False
+    REQUIRE_DATABASE_URL = True
+    REQUIRE_STRONG_SECRETS = True
     
 class TestConfig(Config):
     TESTING = True

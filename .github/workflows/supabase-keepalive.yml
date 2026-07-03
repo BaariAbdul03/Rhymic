@@ -37,6 +37,3 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           python keep_alive.py
-
-      - name: Keepalive Workflow (Prevent GitHub Action Auto-Disable)
-        uses: gautamkrishnar/keepalive-workflow@v2

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 /* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, Flame, Globe, Play, SignalHigh, Clock } from 'lucide-react';
+import { Search, Flame, Globe, Play, SignalHigh, Clock, Loader2 } from 'lucide-react';
 import { streamApi } from '../services/api';
 import { useMusicStore } from '../store/musicStore';
 import SongCover from './SongCover';
@@ -168,7 +168,7 @@ const OnlineSearch = () => {
               exit={{ opacity: 0 }}
             >
               <h2 className={styles.sectionTitle}><Flame size={20} color="var(--accent-primary)"/> Today's Top Streams</h2>
-              {trending.length > 0 ? renderSongList(trending) : <div className={styles.loading}>Loading trends...</div>}
+              {trending.length > 0 ? renderSongList(trending) : <div className={styles.loadingContainer}><Loader2 className={styles.loopIcon} size={24} /><span>Loading trending songs...</span></div>}
             </motion.div>
           ) : (
             <motion.div 

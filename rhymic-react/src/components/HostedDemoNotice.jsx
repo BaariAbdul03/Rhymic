@@ -9,16 +9,16 @@ const HostedDemoNotice = ({ compact = false }) => (
       <Info size={20} />
     </div>
     <div className={styles.content}>
-      <strong>Hosted demo notice</strong>
+      <strong>Online Streaming Status</strong>
       <p>
-        Third-party catalog playback is disabled in this public deployment to respect content licensing
-        and platform distribution policies. RhyMic's local playback, playlists, audio tools, visualizer,
-        and library experience remain available for evaluation.
+        YouTube Music streaming is currently unavailable in this online deployment (due to server IP rate limits).
+        Please try the <strong>preloaded offline songs</strong> already in your Library (such as <em>Alone</em>, <em>Darkside</em>, and more)
+        to experience the Web Audio engine, 10-band EQ, and Visualizer, or upload your own files.
       </p>
     </div>
     <Link className={styles.action} to="/upload">
       <Upload size={16} />
-      Try Local Files
+      Upload Files
     </Link>
   </aside>
 );

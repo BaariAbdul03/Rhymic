@@ -131,13 +131,6 @@ def _resolve_with_ytdlp(video_id):
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["web", "mweb"],
-                "player_skip": ["webpage"],
-                "skip": ["hls", "dash"],
-            }
-        },
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         },

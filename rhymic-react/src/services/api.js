@@ -16,12 +16,24 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+let logoutCallback = null;
+export const setLogoutCallback = (cb) => {
+  logoutCallback = cb;
+};
+
 // Response interceptor to handle global errors (like 401 Unauthorized)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // We don't automatically logout here unless we emit an event or call store method,
-    // which can be done from the store itself using this API instance.
+    if (error.response?.status === 401) {
+      if (logoutCallback) {
+        logoutCallback();
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/landing';
+      }
+    }
     return Promise.reject(error);
   }
 );

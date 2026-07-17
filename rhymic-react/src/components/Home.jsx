@@ -199,7 +199,7 @@ const Home = () => {
     <div className={styles.homeContainer}>
       <Hero onlineSongs={onlineRanked} onlineStatus={onlineStatus} />
 
-      {onlineStatus === 'disabled' && <HostedDemoNotice />}
+      {(onlineStatus === 'disabled' || onlineStatus === 'fallback') && <HostedDemoNotice />}
 
       <div className={styles.quickStrip}>
         <div className={`${styles.statusPill} ${styles[onlineStatus] || ''}`}>

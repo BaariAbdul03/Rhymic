@@ -2,9 +2,37 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styles from './PlaylistPage.module.css';
 import { useMusicStore } from '../store/musicStore';
-import { Play, Heart, Music2, Trash2, Edit3, Check, X } from 'lucide-react';
+import { Play, Heart, Music2, Trash2, Edit3, Check, X, Loader2 } from 'lucide-react';
 import ContextMenu from './ContextMenu';
 import SongCover from './SongCover';
+
+const PlaylistLoading = () => {
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 99) {
+          clearInterval(timer);
+          return 99;
+        }
+        const diff = Math.floor(Math.random() * 15) + 5;
+        return Math.min(prev + diff, 99);
+      });
+    }, 120);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className={styles.loadingContainer}>
+      <div className={styles.spinnerWrapper}>
+        <Loader2 className={styles.loopIcon} size={48} />
+        <span className={styles.percentageText}>{progress}%</span>
+      </div>
+      <p className={styles.loadingText}>Syncing playlist catalog...</p>
+    </div>
+  );
+};
 
 const PlaylistDetails = () => {
   const { id } = useParams();
@@ -74,7 +102,7 @@ const PlaylistDetails = () => {
     setIsEditing(false);
   };
 
-  if (!currentPlaylist) return <div className={styles.loading}>Loading...</div>;
+  if (!currentPlaylist) return <PlaylistLoading />;
 
   const songCount = currentPlaylist.songs.length;
   

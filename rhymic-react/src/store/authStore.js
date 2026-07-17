@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { authApi } from '../services/api';
+import { authApi, setLogoutCallback } from '../services/api';
 
 export const useAuthStore = create((set, get) => ({
   user: JSON.parse(localStorage.getItem('user')) || null,
@@ -176,3 +176,9 @@ export const useAuthStore = create((set, get) => ({
     set({ user: null, token: null });
   }
 }));
+
+setLogoutCallback(() => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  useAuthStore.setState({ user: null, token: null });
+});

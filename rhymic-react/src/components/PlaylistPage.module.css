@@ -345,6 +345,148 @@
 }
 .skeletonArtist {
   width: 80px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+}
+
+.songItem:hover {
+  background-color: var(--glass-hover); /* This uses our brighter theme variable */
+  border-color: var(--border-color);
+}
+
+.songItem.active {
+  background-color: rgba(212, 175, 55, 0.15); /* Golden tint */
+  border-color: var(--accent-primary);
+}
+
+.index {
+  color: var(--text-secondary);
+  width: 32px;
+  font-size: 1rem;
+}
+
+.songLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.songCover {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+}
+
+.songInfo h4 {
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.songInfo p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.songRight {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.likeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  opacity: 0; /* Hide by default */
+  transition: opacity 0.2s;
+}
+
+.songItem:hover .likeButton {
+  opacity: 1; /* Show on hover */
+}
+
+.likeButton.likeActive {
+  color: var(--accent-primary);
+  opacity: 1;
+}
+
+.playingIndicator {
+  color: var(--accent-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 32px 16px;
+    gap: 20px;
+  }
+
+  .headerImage {
+    width: 160px;
+    height: 160px;
+  }
+
+  .title {
+    font-size: 2rem;
+    margin-bottom: 12px;
+  }
+
+  .meta {
+    justify-content: center;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+  }
+
+  .listContainer {
+    padding: 16px;
+  }
+
+  .songItem {
+    padding: 10px;
+  }
+
+  .index {
+    display: none;
+  }
+  
+  .songRight {
+    gap: 12px;
+  }
+}
+
+.skeleton {
+  background: var(--glass-bg, rgba(255,255,255,0.05));
+  border-radius: 8px;
+  animation: pulse 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+.skeletonCover {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: inherit;
+  opacity: 0.5;
+}
+.skeletonTitle {
+  width: 120px;
+  height: 16px;
+  border-radius: 4px;
+  background: inherit;
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+.skeletonArtist {
+  width: 80px;
   height: 12px;
   border-radius: 4px;
   background: inherit;
@@ -353,4 +495,57 @@
 @keyframes pulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.8; }
+}
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  width: 100%;
+  gap: 16px;
+  color: var(--text-primary);
+  font-family: inherit;
+  z-index: 10;
+}
+
+.spinnerWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+}
+
+.loopIcon {
+  color: var(--accent-primary);
+  animation: spin-loader 1.5s linear infinite;
+}
+
+.percentageText {
+  position: absolute;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  text-shadow: 0 0 10px rgba(212, 168, 67, 0.4);
+}
+
+.loadingText {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+  animation: pulse-loader 1.5s ease-in-out infinite;
+}
+
+@keyframes spin-loader {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes pulse-loader {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }

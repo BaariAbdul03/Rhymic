@@ -16,6 +16,30 @@ from backend.models.user import User
 
 auth_bp = Blueprint('auth', __name__)
 
+IMAGE_MAGIC_BYTES = {
+    b'\xff\xd8\xff': 'jpeg',
+    b'\x89PNG\r\n\x1a\n': 'png',
+    b'GIF87a': 'gif',
+    b'GIF89a': 'gif',
+}
+
+# WEBP starts with RIFF + 8 bytes padding + WEBP magic
+WEBP_MAGIC = b'RIFF....WEBP'
+
+
+def _is_valid_image_magic_bytes(data):
+    """Validate file content using magic bytes to ensure it's a real image."""
+    if not data or len(data) < 12:
+        return False
+    for magic in IMAGE_MAGIC_BYTES:
+        if data[:len(magic)] == magic:
+            return True
+    # Special check for WEBP: RIFF (4 bytes) + file size (4 bytes) + WEBP (4 bytes)
+    if data[:4] == b'RIFF' and data[8:12] == b'WEBP':
+        return True
+    return False
+
+
 def is_valid_email(email):
     regex = r'^\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
     return re.match(regex, email)
@@ -85,11 +109,13 @@ def login():
             
     user = User.query.filter_by(email=data['email']).first()
     if user and bcrypt.check_password_hash(user.password, data['password']):
+        remember = data.get('rememberMe', False)
         if user.is_two_factor_enabled:
             temp_token = create_access_token(identity=str(user.id), expires_delta=timedelta(minutes=5), additional_claims={"type": "temp_2fa"})
             return jsonify({"2fa_required": True, "temp_token": temp_token}), 200
             
-        token = create_access_token(identity=str(user.id), expires_delta=timedelta(hours=24))
+        expires = timedelta(days=30) if remember else timedelta(hours=24)
+        token = create_access_token(identity=str(user.id), expires_delta=expires)
         return jsonify({"token": token, "user": user.to_dict()}), 200
         
     return jsonify({"message": "Invalid email or password"}), 401
@@ -157,6 +183,7 @@ def verify_2fa():
         
     data = request.get_json()
     code = data.get('code')
+    remember = data.get('rememberMe', False)
     if not code:
         return jsonify({"message": "Missing 2FA code"}), 400
         
@@ -167,7 +194,8 @@ def verify_2fa():
         
     totp = pyotp.TOTP(user.two_factor_secret)
     if totp.verify(code):
-        token = create_access_token(identity=str(user.id), expires_delta=timedelta(hours=24))
+        expires = timedelta(days=30) if remember else timedelta(hours=24)
+        token = create_access_token(identity=str(user.id), expires_delta=expires)
         return jsonify({"token": token, "user": user.to_dict()}), 200
         
     return jsonify({"message": "Invalid 2FA code"}), 401
@@ -246,9 +274,19 @@ def upload_profile_pic():
         return jsonify({"message": "No selected file"}), 400
 
     if file:
+        # Validate file type by magic bytes (SSRF/Security Prevention)
+        file_bytes = file.read()
+        if not _is_valid_image_magic_bytes(file_bytes):
+            return jsonify({"message": "Invalid file type. Only image files are allowed."}), 400
+
+        # Validate file extension
+        ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            ext = '.jpg'  # Default to jpg if extension is invalid
+        
         try:
             from backend.services.storage_service import upload_profile_pic as upload_to_supabase
-            file_bytes = file.read()
             
             # Try Supabase upload first
             remote_url = upload_to_supabase(file_bytes, file.filename)
@@ -256,21 +294,36 @@ def upload_profile_pic():
             if remote_url:
                 img_url = remote_url
             else:
-                # Reset file pointer for local save
-                file.seek(0)
+                # Re-encode image with Pillow to strip any malicious content
+                try:
+                    from PIL import Image
+                    import io
+                    img = Image.open(io.BytesIO(file_bytes))
+                    # Convert to RGB if necessary (e.g., RGBA -> RGB for JPEG)
+                    if img.mode in ('RGBA', 'LA', 'P'):
+                        img = img.convert('RGB')
+                    # Re-save to strip EXIF/metadata and recompress
+                    cleaned = io.BytesIO()
+                    img.save(cleaned, format='JPEG', quality=85)
+                    cleaned_bytes = cleaned.getvalue()
+                except ImportError:
+                    # Pillow not installed — use original bytes
+                    cleaned_bytes = file_bytes
+                except Exception:
+                    # If re-encoding fails, reject the file
+                    return jsonify({"message": "Invalid image file"}), 400
+
                 # Create users directory if it doesn't exist
                 users_dir = os.path.join(current_app.config['ASSETS_DIR'], 'users')
                 os.makedirs(users_dir, exist_ok=True)
                 
                 # Generate UUID filename to prevent collisions and path traversal
-                ext = os.path.splitext(file.filename)[1]
-                if not ext:
-                    ext = '.jpg' # fallback
                 new_filename = f"{uuid.uuid4().hex}{ext}"
                 file_path = os.path.join(users_dir, new_filename)
                 
-                # Save the file
-                file.save(file_path)
+                # Save the cleaned file
+                with open(file_path, 'wb') as f:
+                    f.write(cleaned_bytes)
                 img_url = f"/assets/users/{new_filename}"
 
             # Update DB

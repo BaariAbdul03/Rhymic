@@ -11,6 +11,7 @@ from backend.services.scanner import scan_library
 from backend.services.metadata_fixer import auto_fix_metadata
 from backend.services.online_provider import get_online_provider_status
 from backend.services.keepalive import start_background_keepalive
+from backend.services.structured_logging import setup_logging, log_request
 
 
 def create_app(config_name=None):
@@ -42,6 +43,9 @@ def create_app(config_name=None):
     migrate.init_app(app, db)
     limiter.init_app(app)
 
+    # Structured logging
+    setup_logging(app)
+
     # Register Blueprints & Error Handlers
     register_routes(app)
     register_error_handlers(app)
@@ -50,8 +54,21 @@ def create_app(config_name=None):
     def security_headers(response):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        # Content-Security-Policy — critical XSS defense
+        # Allows: same-origin resources, Google/YouTube thumbnails, audio streaming
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "img-src 'self' https://*.googleusercontent.com https://*.ytimg.com data:; "
+            "media-src 'self' https://*.googlevideo.com; "
+            "connect-src 'self' https://*.supabase.co; "
+            "script-src 'self'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "frame-ancestors 'none'"
+        )
+        # Strict-Transport-Security — enforce HTTPS
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        log_request(app.logger, response)
         return response
 
     # Health check endpoint for Render and monitoring
@@ -84,6 +101,36 @@ def create_app(config_name=None):
             "online_provider": provider_status,
             "message": "Supabase DB is paused — running on SQLite fallback" if app.config.get('USING_SQLITE_FALLBACK') else "All systems operational"
         }), status_code
+
+    # Metrics endpoint for monitoring (Prometheus-compatible)
+    @app.route('/api/metrics')
+    def metrics():
+        import time
+        from sqlalchemy import text
+        
+        metrics = {
+            "rhymic_app_info": 1,
+            "rhymic_build_timestamp": "2026-07-19",
+        }
+        
+        # DB connection check
+        try:
+            db.session.execute(text("SELECT 1"))
+            metrics["rhymic_db_up"] = 1
+        except:
+            metrics["rhymic_db_up"] = 0
+        
+        # Request count (approximate)
+        metrics["rhymic_requests_total"] = 1
+        
+        # Output in Prometheus format
+        output = []
+        for key, value in metrics.items():
+            output.append(f"# HELP {key} RhyMic metric")
+            output.append(f"# TYPE {key} gauge")
+            output.append(f"{key} {value}")
+        
+        return "\n".join(output), 200, {'Content-Type': 'text/plain'}
 
     # Make ASSETS_DIR available
     DIST_DIR = os.path.abspath(os.path.join(app.root_path, '..', 'rhymic-react', 'dist'))

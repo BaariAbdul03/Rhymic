@@ -1,9 +1,11 @@
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required
 from backend.models.song import Song
 
 songs_bp = Blueprint('songs', __name__)
 
 @songs_bp.route('/', methods=['GET'])
+@jwt_required()
 def get_songs():
     """
     Get all songs with optional pagination.
@@ -26,6 +28,7 @@ def get_songs():
         return jsonify([]), 200  # Return empty array, not 500
 
 @songs_bp.route('/<int:song_id>', methods=['GET'])
+@jwt_required()
 def get_song(song_id):
     try:
         song = Song.query.get(song_id)

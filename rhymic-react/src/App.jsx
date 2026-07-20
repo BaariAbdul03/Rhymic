@@ -49,6 +49,9 @@ const AppContent = () => {
   
   const token = useAuthStore((state) => state.token);
   const error = useMusicStore((state) => state.error);
+  const streamFallbackUrl = useMusicStore((state) => state.streamFallbackUrl);
+  const nextSong = useMusicStore((state) => state.nextSong);
+  const clearStreamFallback = useMusicStore((state) => state.clearStreamFallback);
   const location = useLocation();
 
   useEffect(() => {
@@ -151,7 +154,7 @@ const AppContent = () => {
         }}
       />
 
-      {/* Global Error Toast */}
+      {/* Global Error Toast — with YouTube fallback button for cloud-blocked streams */}
       <AnimatePresence>
         {error && (
           <Motion.div
@@ -161,7 +164,41 @@ const AppContent = () => {
             exit={{ opacity: 0, y: 50, x: '-50%' }}
           >
             <div className={styles.errorIcon}>!</div>
-            <span>{error}</span>
+            <span className={styles.errorMessage}>{error}</span>
+            {streamFallbackUrl && (
+              <div className={styles.fallbackActions}>
+                <a 
+                  href={streamFallbackUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.youtubeBtn}
+                  onClick={() => {
+                    const store = useMusicStore.getState();
+                    store.clearStreamFallback();
+                    store.clearError();
+                    store.nextSong();
+                  }}
+                >
+                  ▶ Play on YouTube Music
+                </a>
+                <button 
+                  className={styles.skipBtn}
+                  onClick={() => {
+                    const store = useMusicStore.getState();
+                    store.clearStreamFallback();
+                    store.clearError();
+                    store.nextSong();
+                  }}
+                >
+                  Skip
+                </button>
+              </div>
+            )}
+            {!streamFallbackUrl && (
+              <button className={styles.dismissBtn} onClick={() => useMusicStore.getState().clearError()}>
+                ✕
+              </button>
+            )}
           </Motion.div>
         )}
       </AnimatePresence>

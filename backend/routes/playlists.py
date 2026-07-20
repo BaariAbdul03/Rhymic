@@ -35,7 +35,7 @@ def get_playlist_details(playlist_id):
     if not playlist: 
         return jsonify({"message": "Playlist not found"}), 404
         
-    if not playlist.is_system and str(playlist.user_id) != str(user_id): 
+    if not playlist.is_system and int(playlist.user_id) != int(user_id): 
         return jsonify({"message": "Access denied"}), 403
         
     # Extract songs from the pre-loaded relationship
@@ -72,7 +72,7 @@ def delete_playlist(playlist_id):
     
     if not playlist:
         return jsonify({"message": "Playlist not found"}), 404
-    if str(playlist.user_id) != str(user_id) or playlist.is_system:
+    if int(playlist.user_id) != int(user_id) or playlist.is_system:
         return jsonify({"message": "Access denied"}), 403
         
     try:
@@ -96,7 +96,7 @@ def rename_playlist(playlist_id):
     
     if not playlist:
         return jsonify({"message": "Playlist not found"}), 404
-    if str(playlist.user_id) != str(user_id) or playlist.is_system:
+    if int(playlist.user_id) != int(user_id) or playlist.is_system:
         return jsonify({"message": "Access denied"}), 403
         
     try:

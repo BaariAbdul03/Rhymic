@@ -20,6 +20,7 @@ export const useMusicStore = create((set, get) => ({
   currentTime: 0,
   duration: 0,
   errorTimeout: null,
+  streamFallbackUrl: null, // YouTube Music fallback when server-side streaming fails
 
   // --- Audio Engine / Lab ---
   audioContext: null,
@@ -56,10 +57,23 @@ export const useMusicStore = create((set, get) => ({
     set({ error: null, errorTimeout: null });
   },
 
-  handlePlaybackError: (message) => {
-    const { errorTimeout, nextSong } = get();
+  handlePlaybackError: (message, fallbackUrl) => {
+    const { errorTimeout } = get();
     if (errorTimeout) clearTimeout(errorTimeout);
 
+    // If this is a "stream unavailable" error from YouTube blocking, 
+    // store the YouTube fallback URL so the UI can show a "Play on YouTube" button
+    if (fallbackUrl) {
+      set({ 
+        error: message || "YouTube is blocking this stream on cloud servers.", 
+        isPlaying: false,
+        streamFallbackUrl: fallbackUrl
+      });
+      // Don't auto-skip — let the user decide to click the fallback or skip manually
+      return;
+    }
+
+    // Regular playback error (local file, network, etc.)
     set({ 
       error: message || "Playback failed. Skipping track...", 
       isPlaying: false 
@@ -68,11 +82,13 @@ export const useMusicStore = create((set, get) => ({
     // Auto-skip after 3 seconds
     const timeout = setTimeout(() => {
       set({ error: null, errorTimeout: null });
-      nextSong();
+      get().nextSong();
     }, 3000);
 
     set({ errorTimeout: timeout });
   },
+
+  clearStreamFallback: () => set({ streamFallbackUrl: null }),
 
   fetchSongs: async () => {
     set({ error: null });
@@ -366,4 +382,34 @@ export const useMusicStore = create((set, get) => ({
   }),
 
   setVolume: (volume) => { set({ volume: volume }); const { audioElement } = get(); if (audioElement) audioElement.volume = volume; },
+  resetPlayback: () => {
+    const { audioElement } = get();
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.src = "";
+      try {
+        audioElement.load();
+      } catch (e) {
+        console.error("Audio element clean error", e);
+      }
+    }
+    set({
+      currentSong: null,
+      isPlaying: false,
+      queue: [],
+      originalQueue: [],
+      currentTime: 0,
+      duration: 0
+    });
+  },
 }));
+
+// Reset music playback when user logs out
+let prevToken = useAuthStore.getState().token;
+useAuthStore.subscribe((state) => {
+  const currentToken = state.token;
+  if (prevToken && !currentToken) {
+    useMusicStore.getState().resetPlayback();
+  }
+  prevToken = currentToken;
+});

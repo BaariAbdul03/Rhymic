@@ -4,7 +4,9 @@ from ytmusicapi import YTMusic
 import requests as py_requests
 import threading
 import time
+from backend.extensions import limiter
 from backend.services.online_provider import get_audio_stream_url, get_online_provider_status
+from backend.utils.url_validator import validate_url
 
 # Global locks and memory cache to prevent "disappearing" thumbnails due to race conditions
 _thumbnail_lock = threading.Lock()
@@ -136,6 +138,7 @@ def _search_category(category, limit=10):
 
 @stream_bp.route('/search', methods=['GET'])
 @jwt_required()
+@limiter.limit("30 per minute; 200 per hour")
 def search_online():
     query = request.args.get('q')
     if not query:
@@ -162,10 +165,18 @@ def search_online():
 @stream_bp.route('/status', methods=['GET'])
 @jwt_required()
 def stream_status():
-    return jsonify(get_online_provider_status()), 200
+    status = get_online_provider_status()
+    # Add a helpful message about cloud streaming limitations
+    if os.getenv("FLASK_CONFIG", "development") == "production":
+        status["cloud_notice"] = (
+            "YouTube blocks datacenter IPs. Streaming may be limited on cloud hosting. "
+            "Configure YT_OAUTH_CREDENTIALS or STREAM_PROXY for reliable playback."
+        )
+    return jsonify(status), 200
 
 @stream_bp.route('/categories', methods=['GET'])
 @jwt_required()
+@limiter.limit("10 per minute; 60 per hour")
 def get_online_categories():
     """Returns online songs grouped by the requested Discover categories."""
     names_param = request.args.get('names', '')
@@ -207,48 +218,71 @@ def get_audio_url(video_id):
         return jsonify({"message": "Failed to resolve audio stream"}), 500
 
 @stream_bp.route('/proxy/<video_id>', methods=['GET'])
+# NOTE: No @jwt_required() here — browser <audio> elements make direct GET
+# requests without Authorization headers. Auth for media requires signed URLs
+# or cookie-based sessions.
 def proxy_audio(video_id):
     """
     Direct byte-level proxy. The browser's <audio> element hits this URL.
     Flask fetches the real audio from YouTube's CDN and pipes it through
     so the browser thinks it's a same-origin file -> no CORS, no tainted canvas.
     Supports HTTP Range requests for seeking.
+    
+    Graceful Degradation Strategy (ordered):
+    1. Try server-side resolution (resolver -> Piped -> yt-dlp)
+    2. If all fail, return a placeholder response that triggers frontend fallback
+       (frontend will show "Play on YouTube" button)
     """
     try:
         audio_url, fmt = get_audio_stream_url(video_id)
-        if not audio_url:
-            print(f"[Stream Proxy] All layers returned None for {video_id} — returning 404")
-            return Response("Not found", status=404)
+        if audio_url:
+            # Forward Range header for seeking support
+            headers = {}
+            range_header = request.headers.get('Range')
+            if range_header:
+                headers['Range'] = range_header
+            
+            upstream = py_requests.get(audio_url, stream=True, headers=headers, timeout=10)
+            
+            resp_headers = {
+                'Content-Type': upstream.headers.get('Content-Type', 'audio/webm'),
+                'Accept-Ranges': 'bytes',
+            }
+            if upstream.headers.get('Content-Length'):
+                resp_headers['Content-Length'] = upstream.headers['Content-Length']
+            if upstream.headers.get('Content-Range'):
+                resp_headers['Content-Range'] = upstream.headers['Content-Range']
+            
+            status = 206 if upstream.status_code == 206 else 200
+            
+            return Response(
+                upstream.iter_content(chunk_size=1024 * 64),
+                status=status,
+                headers=resp_headers
+            )
         
-        # Forward Range header for seeking support
-        headers = {}
-        range_header = request.headers.get('Range')
-        if range_header:
-            headers['Range'] = range_header
-        
-        upstream = py_requests.get(audio_url, stream=True, headers=headers, timeout=10)
-        
-        resp_headers = {
-            'Content-Type': upstream.headers.get('Content-Type', 'audio/webm'),
-            'Accept-Ranges': 'bytes',
-        }
-        if upstream.headers.get('Content-Length'):
-            resp_headers['Content-Length'] = upstream.headers['Content-Length']
-        if upstream.headers.get('Content-Range'):
-            resp_headers['Content-Range'] = upstream.headers['Content-Range']
-        
-        status = 206 if upstream.status_code == 206 else 200
-        
-        return Response(
-            upstream.iter_content(chunk_size=1024 * 64),
-            status=status,
-            headers=resp_headers
-        )
+        # All server-side methods failed — return a special status that tells
+        # the frontend to use the YouTube Music fallback
+        print(f"[Stream Proxy] All layers returned None for {video_id} — falling back to YouTube redirect")
+        return jsonify({
+            "error": "stream_unavailable",
+            "message": "Server-side stream resolution failed. Try playing directly on YouTube.",
+            "fallback_url": f"https://music.youtube.com/watch?v={video_id}",
+            "video_id": video_id
+        }), 503
+            
     except Exception as e:
         print(f"[Stream Proxy Error] {e}")
-        return Response("Stream error", status=500)
+        return jsonify({
+            "error": "stream_error",
+            "message": "Stream error occurred.",
+            "fallback_url": f"https://music.youtube.com/watch?v={video_id}",
+            "video_id": video_id
+        }), 500
 
 @stream_bp.route('/thumbnail', methods=['GET'])
+# NOTE: No @jwt_required() here — browser <img> elements make direct GET
+# requests without Authorization headers. Use signed URLs for auth if needed.
 def proxy_thumbnail():
     """
     Proxies thumbnails with multi-tier caching (Memory -> Disk -> Redirect).
@@ -261,6 +295,17 @@ def proxy_thumbnail():
     fallback_url = request.args.get('fallback')
     if not target_url:
         return Response("URL required", status=400)
+
+    # SSRF Protection: validate the URL before fetching
+    is_valid, error_msg = validate_url(target_url)
+    if not is_valid:
+        print(f"[Thumbnail] SSRF blocked: {error_msg} — URL: {target_url[:80]}")
+        return _redirect_to_image(target_url, fallback_url)
+
+    if fallback_url:
+        is_valid_fb, _ = validate_url(fallback_url)
+        if not is_valid_fb:
+            fallback_url = None
 
     # Lazy-import cache service (always available)
     try:

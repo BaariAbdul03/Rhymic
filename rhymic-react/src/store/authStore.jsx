@@ -21,10 +21,10 @@ const getInitialState = () => {
 
 export const useAuthStore = create((set, get) => ({
   ...getInitialState(),
-  login: async (email, password) => {
+  login: async (email, password, rememberMe = false) => {
     set({ error: null });
     try {
-      const response = await authApi.login(email, password);
+      const response = await authApi.login(email, password, rememberMe);
       const data = response.data;
 
       if (data['2fa_required']) {
@@ -76,11 +76,11 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  verify2FA: async (code) => {
+  verify2FA: async (code, rememberMe = false) => {
     set({ error: null });
     try {
       const tempToken = get().tempToken;
-      const response = await authApi.verify2FA(code, tempToken);
+      const response = await authApi.verify2FA(code, tempToken, rememberMe);
       const data = response.data;
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));

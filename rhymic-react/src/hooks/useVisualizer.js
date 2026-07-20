@@ -290,6 +290,11 @@ export const useVisualizer = (canvasRef, mode, isVisualizerOpen) => {
       const height = canvas.height / dpr;
       if (width === 0 || height === 0) return;
       const ctx = canvas.getContext('2d');
+      
+      // Ensure context is scaled correctly for DPR on every frame,
+      // preventing duplicate offset rendering when canvas buffer resets.
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
 
       switch (mode) {
         case 'waveform': drawWaveform(ctx, width, height); break;

@@ -119,9 +119,24 @@ export const useAudio = () => {
 
     const handlePlaybackError = () => {
       const { handlePlaybackError: storeErrorHandler, currentSong } = useMusicStore.getState();
-      if (currentSong) {
-        storeErrorHandler(`Failed to stream "${currentSong.title}". Skipping...`);
+      if (!currentSong) {
+        storeErrorHandler('Playback failed.');
+        return;
       }
+
+      // For online songs, YouTube blocking on cloud servers is expected.
+      // Construct the fallback URL directly from the video ID — no extra fetch needed.
+      if (currentSong.source === 'online' && currentSong.id) {
+        const fallbackUrl = `https://music.youtube.com/watch?v=${currentSong.id}`;
+        storeErrorHandler(
+          `"${currentSong.title}" can't stream from cloud servers. Play on YouTube instead.`,
+          fallbackUrl
+        );
+        return;
+      }
+
+      // Default error handling for local songs
+      storeErrorHandler(`Failed to play "${currentSong.title}".`);
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);

@@ -53,7 +53,7 @@ api.interceptors.response.use(
 // --- API Methods ---
 
 export const authApi = {
-  login: (email, password) => api.post('/login', { email, password }),
+  login: (email, password, rememberMe) => api.post('/login', { email, password, rememberMe }),
   signup: (name, email, password) => api.post('/signup', { name, email, password }),
   getMe: () => api.get('/user/me'),
   uploadProfilePic: (formData) => api.post('/user/upload_profile_pic', formData, {
@@ -61,7 +61,7 @@ export const authApi = {
   }),
   forgotPassword: (email) => api.post('/forgot-password', { email }),
   resetPassword: (email, pin, new_password) => api.post('/reset-password', { email, pin, new_password }),
-  verify2FA: (code, tempToken) => api.post('/2fa/verify', { code }, {
+  verify2FA: (code, tempToken, rememberMe) => api.post('/2fa/verify', { code, rememberMe }, {
     headers: { Authorization: `Bearer ${tempToken}` }
   }),
   setup2FA: () => api.post('/2fa/setup'),

@@ -1,10 +1,11 @@
 import os
 import re
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required
 import requests
 from google import genai
 from backend.models.song import Song, ArtistImage
-from backend.extensions import db
+from backend.extensions import db, limiter
 
 artists_bp = Blueprint('artists', __name__)
 
@@ -27,6 +28,8 @@ def fetch_itunes_artist_image(name):
     return "/assets/default_cover.jpg"
 
 @artists_bp.route('/images', methods=['POST'])
+@jwt_required()
+@limiter.limit("30 per minute; 200 per hour")
 def get_artist_images():
     """Batch fetch artist images with DB caching."""
     data = request.get_json()
@@ -61,6 +64,7 @@ def get_artist_images():
     return jsonify(results)
 
 @artists_bp.route('/<name>/profile', methods=['GET'])
+@jwt_required()
 def get_artist_profile(name):
     """
     Get an artist's profile using LOCAL library data.

@@ -16,8 +16,82 @@ services:
       - key: FLASK_CONFIG
         value: production
 
+      # ── Online Streaming Configuration ────────────────────────────────
+      # YouTube blocks datacenter IPs. Three layers of bypass are available:
+      #
+      #   Layer 1: Piped instances (works out of the box, no setup needed)
+      #   Layer 2: YT_OAUTH_CREDENTIALS (OAuth TV device flow, highly reliable)
+      #   Layer 3: WARP sidecar proxy (routes yt-dlp through Cloudflare IPs)
+      #
+      # Available streaming modes:
+      #   extractor  — tries all: resolver -> Piped -> yt-dlp (recommended)
+      #   auto       — resolver -> Piped -> yt-dlp (same as extractor)
+      #   piped      — Piped instances only (works on Render without setup)
+      #   disabled   — hide online streaming entirely
       - key: ONLINE_STREAM_PROVIDER
-        value: disabled
+        value: extractor
+
+      # ═════════════════════════════════════════════════════════════════╗
+      # ║  LAYER 1 — Piped Instance Override                           ║
+      # ╚════════════════════════════════════════════════════════════════╝
+      # Piped instances are curated by default. Override with comma-separated
+      # custom API URLs if you have private instances:
+      #   YT_PIPED_INSTANCES=https://piped.example.com/api
+      - key: YT_PIPED_INSTANCES
+        sync: false
+
+      # ═════════════════════════════════════════════════════════════════╗
+      # ║  LAYER 2 — YouTube OAuth Credentials                         ║
+      # ╚════════════════════════════════════════════════════════════════╝
+      # Generate a ONE-TIME OAuth credential locally and paste it here.
+      # The resolver microservice uses this to authenticate with YouTube
+      # as a TV device, which YouTube trusts from ANY IP.
+      #
+      # How to generate (run locally — NOT on Render):
+      #   bash scripts/setup_yt_oauth.sh       (Linux/Mac)
+      #   .\scripts\setup_yt_oauth.ps1         (Windows PowerShell)
+      #
+      # This will open a browser where you authenticate with a burner
+      # Google account, then outputs a Base64 string. Paste that string
+      # as the value for YT_OAUTH_CREDENTIALS below.
+      - key: YT_OAUTH_CREDENTIALS
+        sync: false
+
+      # ═════════════════════════════════════════════════════════════════╗
+      # ║  LAYER 3 — Cloudflare WARP Sidecar Proxy                     ║
+      # ╚════════════════════════════════════════════════════════════════╝
+      # WARP routes yt-dlp traffic through Cloudflare's residential-like
+      # IPs, bypassing YouTube's datacenter block. Uses wireproxy (userspace
+      # WireGuard client — no TUN device needed).
+      #
+      # Enable with:
+      #   WARP_ENABLED=true
+      #   WARP_MODE=wireproxy        (recommended, no root required)
+      #
+      # For advanced users — use an external SOCKS5 proxy instead:
+      #   WARP_ENABLED=true
+      #   WARP_MODE=external
+      #   WARP_EXTERNAL_PROXY=socks5://user:pass@host:1080
+      - key: WARP_ENABLED
+        value: "false"
+
+      - key: WARP_MODE
+        value: wireproxy
+
+      - key: WARP_PORT
+        value: "40000"
+
+      - key: WARP_EXTERNAL_PROXY
+        sync: false
+
+      # ── Proxy for yt-dlp (set automatically by WARP startup) ────────
+      # Format: socks5://127.0.0.1:40000 or http://proxy:8080
+      # Multiple: socks5://p1:1080,socks5://p2:1080 (random rotation)
+      - key: STREAM_PROXY
+        sync: false
+
+      - key: ALLOWED_ORIGINS
+        value: "https://rhymic.onrender.com,http://localhost:5173,http://localhost:5000"
 
       - key: HOSTED_DEMO_MODE
         value: "true"
@@ -53,10 +127,4 @@ services:
         sync: false
 
       - key: YT_COOKIES_B64
-        sync: false
-
-      - key: YT_OAUTH_CREDENTIALS
-        sync: false
-
-      - key: YT_PIPED_INSTANCES
         sync: false

@@ -41,6 +41,9 @@ class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-do-not-use-in-prod')
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'dev-jwt-secret-do-not-use-in-prod')
     
+    # Rate Limiting Storage
+    RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')
+    
     # DB Config — with automatic fallback if PostgreSQL is unreachable
     _raw_database_url = _normalize_database_url(os.environ.get('DATABASE_URL'))
 
@@ -60,8 +63,9 @@ class Config:
     # Upload limits
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024 # 5MB Limit for Uploads
     
-    # Allowed CORS Origins
-    ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*').split(',')
+    # Allowed CORS Origins — explicit allowlist (never wildcard)
+    _allowed = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:5000')
+    ALLOWED_ORIGINS = _allowed.split(',')
 
     # Supabase (Storage & General API)
     SUPABASE_URL = os.environ.get('SUPABASE_URL')

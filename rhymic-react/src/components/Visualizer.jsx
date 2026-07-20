@@ -1,9 +1,11 @@
 import React, { useRef, useEffect } from 'react';
 /* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Activity, BarChart2, CircleDashed, Sparkles } from 'lucide-react';
+import { X, Activity, BarChart2, CircleDashed, Sparkles, Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
+import { useMusicStore } from '../store/musicStore';
 import { useVisualizer } from '../hooks/useVisualizer';
+import SongCover from './SongCover';
 import styles from './Visualizer.module.css';
 
 const Visualizer = () => {
@@ -13,22 +15,28 @@ const Visualizer = () => {
   const toggleVisualizer = useUIStore((state) => state.toggleVisualizer);
   const setVisualizerMode = useUIStore((state) => state.setVisualizerMode);
 
+  // Music Player Hooks
+  const currentSong = useMusicStore((state) => state.currentSong);
+  const isPlaying = useMusicStore((state) => state.isPlaying);
+  const togglePlay = useMusicStore((state) => state.togglePlay);
+  const nextSong = useMusicStore((state) => state.nextSong);
+  const prevSong = useMusicStore((state) => state.prevSong);
+  const currentTime = useMusicStore((state) => state.currentTime);
+  const duration = useMusicStore((state) => state.duration);
+  const seek = useMusicStore((state) => state.seek);
+
   useVisualizer(canvasRef, visualizerMode, isVisualizerOpen);
 
   useEffect(() => {
     const handleResize = () => {
       if (canvasRef.current) {
-        // FIX C-2: Scale canvas internal buffer by devicePixelRatio so the
-        // visualizer renders sharply on retina/high-DPI screens. Without this,
-        // the canvas buffer is 1:1 with CSS pixels and appears blurry at 2x DPR.
+        // scale canvas internal buffer
         const dpr = window.devicePixelRatio || 1;
         const canvas = canvasRef.current;
         canvas.width = window.innerWidth * dpr;
         canvas.height = window.innerHeight * dpr;
-        // CSS size stays at logical pixels; only the drawing buffer is scaled.
         canvas.style.width = `${window.innerWidth}px`;
         canvas.style.height = `${window.innerHeight}px`;
-        // Scale all canvas draw calls to match DPR
         const ctx = canvas.getContext('2d');
         ctx.scale(dpr, dpr);
       }
@@ -41,6 +49,21 @@ const Visualizer = () => {
 
     return () => window.removeEventListener('resize', handleResize);
   }, [isVisualizerOpen]);
+
+  const formatTime = (time) => {
+    if (isNaN(time)) return "0:00";
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const handleSeek = (e) => {
+    if (!currentSong) return;
+    const time = (e.target.value / 100) * duration;
+    seek(time);
+  };
+
+  const progressPercent = duration ? (currentTime / duration) * 100 : 0;
 
   return (
     <AnimatePresence>
@@ -88,6 +111,57 @@ const Visualizer = () => {
               >
                 <Sparkles size={24} />
               </button>
+            </div>
+          </div>
+
+          {/* Minimal Bottom Player matching Visualizer design */}
+          <div className={styles.bottomPlayer}>
+            <div className={styles.songInfo}>
+              {currentSong ? (
+                <>
+                  <SongCover 
+                    src={currentSong.cover} 
+                    alt={currentSong.title} 
+                    size="small"
+                    className={styles.coverImage} 
+                  />
+                  <div className={styles.songDetails}>
+                    <h4>{currentSong.title}</h4>
+                    <p>{currentSong.artist}</p>
+                  </div>
+                </>
+              ) : (
+                <div className={styles.songDetails}>
+                  <h4>No song playing</h4>
+                </div>
+              )}
+            </div>
+
+            <div className={styles.playbackControls}>
+              <button onClick={prevSong} className={styles.controlBtn} disabled={!currentSong}>
+                <SkipBack size={20} />
+              </button>
+              <button onClick={togglePlay} className={styles.playPauseBtn} disabled={!currentSong}>
+                {isPlaying ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" />}
+              </button>
+              <button onClick={nextSong} className={styles.controlBtn} disabled={!currentSong}>
+                <SkipForward size={20} />
+              </button>
+            </div>
+
+            <div className={styles.scrubber}>
+              <span>{formatTime(currentTime)}</span>
+              <input 
+                type="range" 
+                min="0" 
+                max="100" 
+                value={progressPercent} 
+                onChange={handleSeek} 
+                className={styles.slider}
+                disabled={!currentSong}
+                style={{ '--progress-width': `${progressPercent}%` }}
+              />
+              <span>{formatTime(duration)}</span>
             </div>
           </div>
         </motion.div>

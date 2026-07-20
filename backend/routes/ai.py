@@ -9,6 +9,7 @@ from google import genai
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
+from backend.extensions import limiter
 from backend.models.song import Song
 
 ai_bp = Blueprint('ai', __name__)
@@ -150,6 +151,7 @@ def _local_keyword_search(prompt):
 
 @ai_bp.route('/recommend', methods=['POST'])
 @jwt_required()
+@limiter.limit("10 per minute; 50 per hour")
 def recommend_songs():
     data = request.get_json()
     prompt = (data.get("prompt") or "").strip()
@@ -228,6 +230,7 @@ def recommend_songs():
 
 @ai_bp.route('/categorize-genres', methods=['POST'])
 @jwt_required()
+@limiter.limit("5 per minute; 20 per hour")
 def categorize_genres():
     data = request.get_json()
     if not data or 'categories' not in data:

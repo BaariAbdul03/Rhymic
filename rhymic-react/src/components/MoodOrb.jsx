@@ -6,39 +6,46 @@ import styles from './MoodOrb.module.css';
 
 const moodThemes = {
   "Energetic": {
-    primary: "#e63946",
+    primary: "#ff3b30", // Sleeker red
     secondary: "#ff4d6d",
-    glow: "rgba(230, 57, 70, 0.4)"
+    glow: "rgba(255, 59, 48, 0.3)",
+    text: "#ffffff"
   },
   "Chill": {
     primary: "#4cc9f0",
     secondary: "#48cae4",
-    glow: "rgba(76, 201, 240, 0.4)"
+    glow: "rgba(76, 201, 240, 0.3)",
+    text: "#000000"
   },
   "Melancholy": {
-    primary: "#7209b7",
-    secondary: "#560bad",
-    glow: "rgba(114, 9, 183, 0.4)"
+    primary: "#9b51e0", // Softer purple
+    secondary: "#a29bfe",
+    glow: "rgba(155, 81, 224, 0.3)",
+    text: "#ffffff"
   },
   "Euphoric": {
     primary: "#c8a44e", // RhyMic Gold
     secondary: "#e8c65a",
-    glow: "rgba(200, 164, 78, 0.4)"
+    glow: "rgba(200, 164, 78, 0.3)",
+    text: "#000000"
   },
   "Focus": {
     primary: "#2a9d8f",
     secondary: "#264653",
-    glow: "rgba(42, 157, 143, 0.4)"
+    glow: "rgba(42, 157, 143, 0.3)",
+    text: "#ffffff"
   },
   "Romantic": {
     primary: "#f72585",
     secondary: "#b5179e",
-    glow: "rgba(247, 37, 133, 0.4)"
+    glow: "rgba(247, 37, 133, 0.3)",
+    text: "#ffffff"
   },
   "Loading...": {
     primary: "#c8a44e",
     secondary: "#e8c65a",
-    glow: "rgba(200, 164, 78, 0.2)"
+    glow: "rgba(200, 164, 78, 0.2)",
+    text: "#000000"
   }
 };
 
@@ -56,6 +63,7 @@ const MoodOrb = () => {
     root.style.setProperty('--accent-secondary', theme.secondary);
     root.style.setProperty('--accent-glow', theme.glow);
     root.style.setProperty('--glass-border-glow', theme.glow);
+    root.style.setProperty('--accent-text', theme.text || '#000000');
 
   }, [currentMood]);
 

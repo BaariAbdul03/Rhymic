@@ -16,6 +16,7 @@ const Login = ({ initialSignup = false }) => {
   const [code, setCode] = useState(''); // For 2FA or Reset PIN
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   
   // Validation tracking
   const [touched, setTouched] = useState({ name: false, email: false, password: false, code: false });
@@ -75,7 +76,7 @@ const Login = ({ initialSignup = false }) => {
       }
     } 
     else if (mode === 'login') {
-      const result = await login(email, password);
+      const result = await login(email, password, rememberMe);
       if (result === '2fa_required') {
         setMode('tfa');
       } else if (result) {
@@ -109,7 +110,7 @@ const Login = ({ initialSignup = false }) => {
       }
     }
     else if (mode === 'tfa') {
-      const success = await verify2FA(code);
+      const success = await verify2FA(code, rememberMe);
       if (success) {
         navigate('/');
       }
@@ -265,9 +266,20 @@ const Login = ({ initialSignup = false }) => {
                 </div>
                 {renderStrengthBar()}
                 {mode === 'login' && (
-                  <button type="button" className={styles.toggleLink} style={{ alignSelf: 'flex-start', fontSize: '0.8rem', marginTop: '4px', marginLeft: 0 }} onClick={() => setMode('forgot')}>
-                    Forgot Password?
-                  </button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', userSelect: 'none' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={rememberMe} 
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        style={{ accentColor: 'var(--accent-primary, #d4af37)', cursor: 'pointer' }}
+                      />
+                      Remember Me
+                    </label>
+                    <button type="button" className={styles.toggleLink} style={{ fontSize: '0.8rem', margin: 0 }} onClick={() => setMode('forgot')}>
+                      Forgot Password?
+                    </button>
+                  </div>
                 )}
               </div>
             )}

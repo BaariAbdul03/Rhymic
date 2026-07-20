@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
-from backend.extensions import db
+from flask_jwt_extended import jwt_required
+from backend.extensions import db, limiter
 from backend.models.song import Song
 from backend.models.mood import SongMood
 import os
@@ -10,6 +11,8 @@ mood_bp = Blueprint('mood', __name__)
 MOODS = ["Energetic", "Chill", "Melancholy", "Euphoric", "Focus", "Romantic"]
 
 @mood_bp.route('/<string:song_id>', methods=['GET'])
+@jwt_required()
+@limiter.limit("60 per minute; 300 per hour")
 def get_song_mood(song_id):
     # Determine the lookup logic based on whether song_id is an integer or string (youtube_id)
     song = None

@@ -55,15 +55,20 @@ async function getInnertube() {
     // Cookies alone do not work on datacenter IPs. YouTube blocks at the
     // network level regardless of cookie validity. The TV device flow creates
     // a proper OAuth session YouTube trusts from any IP, including cloud infra.
+    //
+    // IMPORTANT: On Render (headless deploy), there is no one to authorize
+    // the device flow, so signIn() would block forever. We add a 30-second
+    // timeout — if no one authorizes, we fall through to the unauthenticated
+    // ANDROID client (which still works for many public videos).
     if (!innertube && !b64Oauth) {
-      console.log('[Resolver] No YT_OAUTH_CREDENTIALS found. Starting OAuth2 TV Device Flow...');
+      console.log('[Resolver] No YT_OAUTH_CREDENTIALS found. Starting OAuth2 TV Device Flow (30s timeout)...');
       console.log('[Resolver] NOTE: Once authorized, save the Base64 output as YT_OAUTH_CREDENTIALS.');
       try {
-        innertube = await Innertube.create({
+        const deviceInnertube = await Innertube.create({
           client_type: 'TV_EMBEDDED',
           generate_session_locally: true,
         });
-        innertube.session.on('auth-pending', (data) => {
+        deviceInnertube.session.on('auth-pending', (data) => {
           console.log('\n\n======================================================');
           console.log('[Resolver] ACTION REQUIRED: Authorize this service!');
           console.log(`[Resolver] 1. Open in browser: ${data.verification_url}`);
@@ -71,7 +76,7 @@ async function getInnertube() {
           console.log('[Resolver] Use a BURNER Google account!');
           console.log('======================================================\n\n');
         });
-        innertube.session.on('auth', ({ credentials }) => {
+        deviceInnertube.session.on('auth', ({ credentials }) => {
           console.log('[Resolver] OAuth2: Successfully authenticated!');
           const b64 = Buffer.from(JSON.stringify(credentials)).toString('base64');
           console.log('\n======================================================');
@@ -79,7 +84,7 @@ async function getInnertube() {
           console.log(b64);
           console.log('======================================================\n');
         });
-        innertube.session.on('update-credentials', ({ credentials }) => {
+        deviceInnertube.session.on('update-credentials', ({ credentials }) => {
           console.log('[Resolver] OAuth2 credentials refreshed.');
           const b64 = Buffer.from(JSON.stringify(credentials)).toString('base64');
           console.log('\n======================================================');
@@ -87,9 +92,20 @@ async function getInnertube() {
           console.log(b64);
           console.log('======================================================\n');
         });
-        await innertube.session.signIn();
+        
+        // Race the device signIn against a 30-second timeout
+        // On Render, no one will authorize → timeout → fallback to ANDROID
+        await Promise.race([
+          deviceInnertube.session.signIn(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Device flow timed out after 30s')), 30000)
+          )
+        ]);
+        
+        // If signIn completed (user authorized), use this innertube
+        innertube = deviceInnertube;
       } catch (err) {
-        console.error('[Resolver] Device flow failed:', err.message);
+        console.error('[Resolver] Device flow failed or timed out:', err.message);
         innertube = null;
       }
     }

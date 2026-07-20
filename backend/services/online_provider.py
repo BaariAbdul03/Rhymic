@@ -181,9 +181,13 @@ def _resolve_with_piped(video_id):
     instances = _get_piped_instances()
     last_error = None
 
-    for base_url in instances:
+    # Only try the first few instances — all known Piped instances are failing
+    # on cloud deployments (502 errors). Faster timeout means faster fallback
+    # to yt-dlp which actually works.
+    MAX_PIPED_ATTEMPTS = 3
+    for base_url in instances[:MAX_PIPED_ATTEMPTS]:
         try:
-            resp = requests.get(f"{base_url}/streams/{video_id}", timeout=10)
+            resp = requests.get(f"{base_url}/streams/{video_id}", timeout=4)
             if resp.status_code != 200:
                 continue
 
@@ -236,8 +240,8 @@ def _resolve_with_ytdlp(video_id):
         ydl_opts["cookiefile"] = cookie_path
         cookie_manager.is_cookie_stale()
 
-    # Retry loop with exponential backoff
-    max_attempts = 3
+    # Retry loop with exponential backoff (max 2 retries to keep total latency low)
+    max_attempts = 2
     for attempt in range(max_attempts):
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -256,7 +260,9 @@ def _resolve_with_ytdlp(video_id):
                 print(f"[yt-dlp] Retry {attempt + 1}/{max_attempts} after {sleep_time}s: {e}")
                 time.sleep(sleep_time)
             else:
-                raise e
+                # Last attempt failed — don't raise, just return None so next method can try
+                print(f"[yt-dlp] All {max_attempts} attempts failed for {video_id}: {e}")
+                return None, None
 
     return None, None
 

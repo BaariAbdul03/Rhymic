@@ -8,7 +8,9 @@ echo "Installing resolver dependencies..."
 npm ci --prefix backend/resolver
 
 echo "Installing frontend dependencies..."
-npm ci --prefix rhymic-react
+# Use npm install instead of ci because the lockfile doesn't match
+# package.json (test dependencies were added without updating lock).
+npm install --prefix rhymic-react
 
 echo "Building React frontend..."
 npm run build --prefix rhymic-react

@@ -59,11 +59,12 @@ def create_app(config_name=None):
         # Allows: same-origin resources, Google/YouTube thumbnails, audio streaming
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "img-src 'self' https://*.googleusercontent.com https://*.ytimg.com data:; "
+            "img-src 'self' https://*.googleusercontent.com https://*.ytimg.com https://*.supabase.co data:; "
             "media-src 'self' https://*.googlevideo.com; "
             "connect-src 'self' https://*.supabase.co; "
             "script-src 'self'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
             "frame-ancestors 'none'"
         )
         # Strict-Transport-Security — enforce HTTPS
@@ -140,6 +141,30 @@ def create_app(config_name=None):
         app.config['ASSETS_DIR'] = os.path.abspath(os.path.join(app.root_path, '..', 'rhymic-react', 'public', 'assets'))
 
     # Static File Routes (for SPA and assets)
+    # NOTE: The assets route MUST be defined BEFORE the catch-all /<path:path> route,
+    # otherwise Flask/Werkzeug will match the catch-all first and never reach serve_assets.
+    # This caused audio files to receive HTML instead of MP3 data.
+    @app.route('/assets/<path:filename>')
+    def serve_assets(filename):
+        """
+        Serve static assets (images, audio files, etc.) from ASSETS_DIR.
+        Handles URL decoding, missing files, and fallback covers.
+        """
+        try:
+            return send_from_directory(app.config['ASSETS_DIR'], unquote(filename))
+        except Exception as exc:
+            # Log the error for debugging in production
+            app.logger.warning(f"Asset not found: {filename} — {exc}")
+            # For images, fall back to the default cover
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')): 
+                try:
+                    return send_from_directory(app.config['ASSETS_DIR'], 'default_cover.jpg')
+                except Exception:
+                    pass
+            # For audio files, return a proper 404 so the browser can trigger the
+            # error handler instead of silently receiving HTML (SPA fallback).
+            return "Not Found", 404
+
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_frontend(path):
@@ -149,20 +174,15 @@ def create_app(config_name=None):
         if path != "" and os.path.exists(os.path.join(DIST_DIR, path)):
             return send_from_directory(DIST_DIR, path)
         
-        # Handle SPA routing
+        # IMPORTANT: Don't serve index.html for /assets/ requests that don't exist —
+        # this would return HTML where the browser expects MP3/audio data.
+        # The /assets/<path:filename> route above handles this correctly.
+        
+        # Handle SPA routing (only for non-asset paths)
         if os.path.exists(os.path.join(DIST_DIR, 'index.html')):
             return send_from_directory(DIST_DIR, 'index.html')
 
         return "RhyMic Frontend Error", 404
-
-    @app.route('/assets/<path:filename>')
-    def serve_assets(filename):
-        try:
-            return send_from_directory(app.config['ASSETS_DIR'], unquote(filename))
-        except: 
-            if filename.endswith(('.jpg', '.png')): 
-                return send_from_directory(app.config['ASSETS_DIR'], 'default_cover.jpg')
-            return "Not Found", 404
 
     # Run Initialization Tasks Setup
     _initialize_app(app)

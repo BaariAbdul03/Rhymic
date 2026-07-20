@@ -1,9 +1,52 @@
 import { create } from 'zustand';
 import { authApi, setLogoutCallback } from '../services/api';
 
+/**
+ * Decode a JWT and check if it has expired.
+ * This runs client-side so we can clean stale tokens without an API call.
+ * Returns true if the token is expired, malformed, or missing.
+ */
+function isJwtExpired(token) {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // If no exp claim, let the server validate it instead of assuming expired
+    if (!payload.exp) return false;
+    // JWT `exp` is in seconds since epoch; compare with ms
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    // Can't parse — treat as expired
+    return true;
+  }
+}
+
+/**
+ * Get the initial token and user from localStorage, cleaning up if expired.
+ * This prevents the app from trying to use stale tokens after a deploy
+ * that rotates JWT_SECRET_KEY.
+ * Returns { token, user } tuple.
+ */
+function getInitialAuthState() {
+  const token = localStorage.getItem('token');
+  if (!token || isJwtExpired(token)) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    return { token: null, user: null };
+  }
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem('user')) || null;
+  } catch {
+    user = null;
+  }
+  return { token, user };
+}
+
+const initialAuth = getInitialAuthState();
+
 export const useAuthStore = create((set, get) => ({
-  user: JSON.parse(localStorage.getItem('user')) || null,
-  token: localStorage.getItem('token') || null,
+  user: initialAuth.user,
+  token: initialAuth.token,
   tempToken: null,
   error: null,
 

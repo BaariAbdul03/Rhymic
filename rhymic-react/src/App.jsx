@@ -39,6 +39,7 @@ const AppContent = () => {
   const fetchSongs = useMusicStore((state) => state.fetchSongs);
   const fetchPlaylists = useMusicStore((state) => state.fetchPlaylists);
   const fetchLikedSongs = useMusicStore((state) => state.fetchLikedSongs);
+  const fetchUser = useAuthStore((state) => state.fetchUser);
 
   // FIX #22: All hooks must be called unconditionally before any early returns
   const currentSong = useMusicStore((state) => state.currentSong);
@@ -54,13 +55,36 @@ const AppContent = () => {
   const clearStreamFallback = useMusicStore((state) => state.clearStreamFallback);
   const location = useLocation();
 
+  // On token change (including initial mount), first validate the token
+  // server-side via fetchUser() before fetching data.
+  // This catches tokens that are still valid client-side (not expired)
+  // but were invalidated server-side (e.g., new JWT_SECRET_KEY on deploy).
   useEffect(() => {
-    if (token) {
-      fetchSongs();
-      fetchPlaylists();
-      fetchLikedSongs();
+    let cancelled = false;
+    
+    async function initApp() {
+      if (!token) return;
+      
+      try {
+        // First, validate the token by fetching the current user
+        await fetchUser();
+        if (cancelled) return;
+        
+        // Only fetch data if the token is still valid after validation
+        // (fetchUser will call logout() and clear token on 401/404)
+        if (useAuthStore.getState().token) {
+          fetchSongs();
+          fetchPlaylists();
+          fetchLikedSongs();
+        }
+      } catch {
+        // fetchUser handles its own errors; nothing to do here
+      }
     }
-  }, [fetchSongs, fetchPlaylists, fetchLikedSongs, token]);
+    
+    initApp();
+    return () => { cancelled = true; };
+  }, [fetchUser, fetchSongs, fetchPlaylists, fetchLikedSongs, token]);
 
   const showSidebarAndPlayer = !['/login', '/signup', '/landing'].includes(location.pathname);
 

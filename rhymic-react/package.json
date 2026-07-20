@@ -38,7 +38,7 @@
     "jsdom": "^26.0.0",
     "postcss": "^8.5.6",
     "vite": "^7.1.7",
-    "vitest": "^2.1.8"
+    "vitest": "^4.1.10"
   },
   "vitest": {
     "environment": "jsdom",

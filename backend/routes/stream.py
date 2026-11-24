@@ -1,18 +1,13 @@
-from flask import Blueprint, jsonify, request, Response, current_app
+from flask import Blueprint, jsonify, request, Response, redirect
+from urllib.parse import urlsplit
 from flask_jwt_extended import jwt_required
 from ytmusicapi import YTMusic
 import os
 import requests as py_requests
-import threading
 import time
 from backend.extensions import limiter
 from backend.services.online_provider import get_audio_stream_url, get_online_provider_status
-from backend.utils.url_validator import validate_url
 
-# Global locks and memory cache to prevent "disappearing" thumbnails due to race conditions
-_thumbnail_lock = threading.Lock()
-_fetch_locks = {} # Per-hash locks
-_memory_cache = {} # Hot cache for this process session
 _category_cache = {}
 _CATEGORY_CACHE_TTL = 1800
 
@@ -53,39 +48,20 @@ def _is_low_quality_song(item):
     return False
 
 def fix_thumbnail(url):
-    """
-    ULTIMATE PERMANENT FIX:
-    1. For Google-hosted images: Force '=s0' for max quality.
-    2. For YouTube images: Force 'maxresdefault.jpg' for HD video covers.
-    """
-    if not url:
-        return ''
-    
-    # CASE A: Google CDN (lh3.googleusercontent.com, etc.)
-    if 'googleusercontent.com' in url or 'ggpht.com' in url:
-        if '=' in url:
-            # Strip existing size params and force s0
-            base = url.split('=')[0]
-            url = f"{base}=s0"
-        else:
-            url = f"{url}=s0"
-            
-    # CASE B: YouTube Video CDN (i.ytimg.com)
-    hi_res_url = url
-    if 'i.ytimg.com' in url:
-        if 'default.jpg' in url:
-            # Try to upgrade to maxres or hq
-            hi_res_url = url.replace('default.jpg', 'maxresdefault.jpg')
-    
-    # Proxy ONLY external online images through the backend.
-    if url.startswith('http'):
-        import urllib.parse
-        # We pass BOTH the high-res attempt and the original fallback to the proxy
-        proxy_base = "/api/stream/thumbnail"
-        query = f"?url={urllib.parse.quote(hi_res_url)}&fallback={urllib.parse.quote(url)}"
-        return f"{proxy_base}{query}"
-        
-    return url
+    """Return an approved CDN image URL sized for the player and song cards."""
+    try:
+        parsed = urlsplit(url or "")
+        host = parsed.hostname or ""
+    except ValueError:
+        return ""
+    if parsed.scheme != "https" or parsed.netloc != host:
+        return ""
+    if host.endswith((".googleusercontent.com", ".ggpht.com")):
+        path = parsed.path.split("=", 1)[0] + "=s512"
+        return parsed._replace(path=path).geturl()
+    if host.endswith(".ytimg.com"):
+        return url
+    return ""
 
 
 def _format_ytmusic_song(item, category=None):
@@ -275,187 +251,17 @@ def proxy_audio(video_id):
         }), 500
 
 @stream_bp.route('/thumbnail', methods=['GET'])
-# NOTE: No @jwt_required() here — browser <img> elements make direct GET
-# requests without Authorization headers. Use signed URLs for auth if needed.
 def proxy_thumbnail():
-    """
-    Proxies thumbnails with multi-tier caching (Memory -> Disk -> Redirect).
-    Uses per-URL locking to prevent redundant upstream fetches.
-    Fully crash-proof: every code path returns a valid Response.
-    """
-    import mimetypes
-
-    target_url = request.args.get('url')
-    fallback_url = request.args.get('fallback')
-    if not target_url:
-        return Response("URL required", status=400)
-
-    # SSRF Protection: validate the URL before fetching
-    is_valid, error_msg = validate_url(target_url)
-    if not is_valid:
-        print(f"[Thumbnail] SSRF blocked: {error_msg} — URL: {target_url[:80]}")
-        return _redirect_to_image(target_url, fallback_url)
-
-    if fallback_url:
-        is_valid_fb, _ = validate_url(fallback_url)
-        if not is_valid_fb:
-            fallback_url = None
-
-    # Lazy-import cache service (always available)
-    try:
-        from backend.services.cache_service import thumbnail_cache
-    except Exception:
-        # If even cache_service fails, just redirect to the original URL
-        return _redirect_to_image(target_url, fallback_url)
-
-    try:
-        file_hash = thumbnail_cache._get_hash(target_url)
-    except Exception:
-        return _redirect_to_image(target_url, fallback_url)
-
-    # --- 1. Hot Memory Cache (instant, no disk I/O) ---
-    if file_hash in _memory_cache:
-        cached_data = _memory_cache[file_hash]
-        return Response(cached_data['content'], mimetype=cached_data['mime'], headers={
-            'Cache-Control': 'public, max-age=604800, immutable',
-            'ETag': file_hash[:16]
-        })
-
-    CACHE_HEADERS = {
-        'Cache-Control': 'public, max-age=604800, immutable',
-        'ETag': file_hash[:16],
-    }
-
-    # Handle browser 304 Not Modified
-    if request.headers.get('If-None-Match') == file_hash[:16]:
-        return Response('', status=304, headers=CACHE_HEADERS)
-
-    # --- 2. Disk Cache ---
-    try:
-        cached_path = thumbnail_cache.get_cached_path(target_url)
-        if cached_path:
-            mime = mimetypes.guess_type(target_url)[0] or 'image/jpeg'
-            with open(cached_path, 'rb') as f:
-                content = f.read()
-            _memory_cache[file_hash] = {'content': content, 'mime': mime}
-            resp = Response(content, mimetype=mime)
-            resp.headers.update(CACHE_HEADERS)
-            return resp
-    except Exception as e:
-        print(f"[Thumbnail] Disk cache read error: {e}")
-
-    # --- 3. Upstream Fetch (with per-URL locking) ---
-    try:
-        with _thumbnail_lock:
-            if file_hash not in _fetch_locks:
-                _fetch_locks[file_hash] = threading.Lock()
-            lock = _fetch_locks[file_hash]
-    except Exception:
-        return _redirect_to_image(target_url, fallback_url)
-
-    try:
-        with lock:
-            # Re-check caches inside lock (another thread may have just finished)
-            if file_hash in _memory_cache:
-                cached_data = _memory_cache[file_hash]
-                return Response(cached_data['content'], mimetype=cached_data['mime'], headers=CACHE_HEADERS)
-
-            try:
-                cached_path = thumbnail_cache.get_cached_path(target_url)
-                if cached_path:
-                    mime = mimetypes.guess_type(target_url)[0] or 'image/jpeg'
-                    with open(cached_path, 'rb') as f:
-                        content = f.read()
-                    _memory_cache[file_hash] = {'content': content, 'mime': mime}
-                    return Response(content, mimetype=mime, headers=CACHE_HEADERS)
-            except Exception:
-                pass
-
-            # Actually fetch from upstream
-            common_headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-                'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-                'Referer': 'https://music.youtube.com/',
-            }
-
-            content = None
-            mime = 'image/jpeg'
-
-            # Try primary URL
-            try:
-                resp = py_requests.get(target_url, headers=common_headers, timeout=8)
-                if resp.status_code == 200 and len(resp.content) > 100:
-                    content = resp.content
-                    mime = resp.headers.get('Content-Type', 'image/jpeg')
-            except Exception as e:
-                print(f"[Thumbnail] Primary fetch failed: {e}")
-
-            # Try fallback URL if primary failed
-            if not content and fallback_url and fallback_url != target_url:
-                try:
-                    resp = py_requests.get(fallback_url, headers=common_headers, timeout=8)
-                    if resp.status_code == 200 and len(resp.content) > 100:
-                        content = resp.content
-                        mime = resp.headers.get('Content-Type', 'image/jpeg')
-                except Exception as e:
-                    print(f"[Thumbnail] Fallback fetch failed: {e}")
-
-            # Try Neon DB persistent cache as last resort
-            if not content:
-                try:
-                    from backend.services.storage_service import load_file
-                    stored = load_file(file_hash)
-                    if stored:
-                        content, mime = stored
-                except Exception:
-                    pass
-
-            if content:
-                # Save to disk cache
-                try:
-                    thumbnail_cache.save_to_cache(target_url, content)
-                except Exception:
-                    pass
-
-                # Fill memory cache
-                _memory_cache[file_hash] = {'content': content, 'mime': mime}
-
-                # Background persist to Neon DB cache (fire and forget)
-                try:
-                    from backend.services.storage_service import upload_thumbnail
-                    flask_app = current_app._get_current_object()
-                    def _persist_thumbnail():
-                        with flask_app.app_context():
-                            try:
-                                upload_thumbnail(content, file_hash, mime)
-                            finally:
-                                from backend.extensions import db
-                                db.session.remove()
-                    threading.Thread(target=_persist_thumbnail, daemon=True).start()
-                except Exception:
-                    pass
-
-                return Response(content, mimetype=mime, headers=CACHE_HEADERS)
-
-    except Exception as e:
-        print(f"[Thumbnail] Unexpected error: {e}")
-
-    # --- 4. Ultimate Fallback: Redirect browser directly to the image URL ---
-    # This avoids returning a 500/404 — the browser fetches directly from Google CDN
-    return _redirect_to_image(target_url, fallback_url)
+    """Keep saved artwork URLs working without fetching images through Render."""
+    url = fix_thumbnail(request.args.get("url")) or fix_thumbnail(request.args.get("fallback"))
+    if not url:
+        return Response("Thumbnail unavailable", status=404, mimetype="text/plain")
+    response = redirect(url)
+    response.cache_control.public = True
+    response.cache_control.max_age = 3600
+    return response
 
 
-def _redirect_to_image(primary_url, fallback_url=None):
-    """
-    Instead of returning a 500 or 404, redirect the browser to fetch the image 
-    directly from the CDN. This is the ultimate safety net.
-    """
-    from flask import redirect
-    url = fallback_url or primary_url
-    if url:
-        return redirect(url, code=302)
-    return Response("Not Found", status=404)
-    
 @stream_bp.route('/trending', methods=['GET'])
 @jwt_required()
 def get_trending():

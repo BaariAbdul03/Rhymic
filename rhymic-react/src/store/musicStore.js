@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
-import { songsApi, playlistsApi, likesApi } from '../services/api';
+import { songsApi, playlistsApi, likesApi, moodApi } from '../services/api';
 import { preloadImages } from '../utils/preloadImages';
 
 export const useMusicStore = create((set, get) => ({
@@ -40,14 +40,24 @@ export const useMusicStore = create((set, get) => ({
   // List of available moods for rotation
   _moodList: ["Chill", "Energetic", "Melancholy", "Euphoric", "Focus", "Romantic"],
 
-  fetchSongMood: () => {
+  fetchSongMood: async (song) => {
     const { _moodList, moodIndex } = get();
     const nextIndex = (moodIndex + 1) % _moodList.length;
     
-    set({ 
-      moodIndex: nextIndex, 
-      currentMood: _moodList[nextIndex] 
+    set({
+      moodIndex: nextIndex,
+      currentMood: _moodList[nextIndex],
     });
+
+    if (song.src?.startsWith('blob:')) return;
+    try {
+      const { data } = await moodApi.getSongMood(song.id, song.title, song.artist);
+      if (get().currentSong === song && !data.error && _moodList.includes(data.mood)) {
+        set({ currentMood: data.mood });
+      }
+    } catch {
+      // The fallback mood already applies while the service is unavailable.
+    }
   },
   shuffle: false,
   repeat: false,
@@ -108,7 +118,7 @@ export const useMusicStore = create((set, get) => ({
        // inject it so the Favorites page can render it immediately.
        if (typeof input === 'object' && input.source === 'online') {
          if (!newSongs.find(s => s.id === songId)) {
-            const normalizedInput = { ...input, cover: (input.cover || input.thumbnail || "").replace(/=s\d+$/, "") + "=s0" };
+            const normalizedInput = { ...input, cover: input.cover || input.thumbnail || '' };
             newSongs.push(normalizedInput);
          }
        }
@@ -221,7 +231,10 @@ export const useMusicStore = create((set, get) => ({
 
   // --- Player Controls ---
   setSongs: (songs) => {
-    const normalizedSongs = songs.map(s => s.source === 'online' ? { ...s, cover: (s.cover || s.thumbnail || "").replace(/=s\d+$/, "") + "=s0" } : s);
+    const normalizedSongs = songs.map(song => song.source === 'online'
+      ? { ...song, cover: song.cover || song.thumbnail || '' }
+      : song
+    );
     set({ queue: normalizedSongs, originalQueue: normalizedSongs });
   },
   setQueue: (newQueue) => set({ queue: newQueue, originalQueue: newQueue }),

@@ -26,13 +26,13 @@ import { useMusicStore } from './store/musicStore';
 import { useAuthStore } from './store/authStore';
 import { useUIStore } from './store/uiStore';
 import YouTubePlayer from './components/YouTubePlayer';
+import MobilePlayer from './components/MobilePlayer';
+import Visualizer from './components/Visualizer';
+import AudioLab from './components/AudioLab';
 
 const OnlineSearch = lazy(() => import('./components/OnlineSearch'));
 const ArtistDetail = lazy(() => import('./components/ArtistDetail'));
 const SmartDJ = lazy(() => import('./components/SmartDJ'));
-const MobilePlayer = lazy(() => import('./components/MobilePlayer'));
-const Visualizer = lazy(() => import('./components/Visualizer'));
-const AudioLab = lazy(() => import('./components/AudioLab'));
 const Profile = lazy(() => import('./components/Profile'));
 const Settings = lazy(() => import('./components/Settings'));
 
@@ -113,6 +113,7 @@ const AppContent = () => {
       
       <main className={styles.mainWrapper}>
         <Topbar />
+        <YouTubePlayer />
         <div className={styles.scrollableContent}>
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
@@ -140,14 +141,10 @@ const AppContent = () => {
       <div className={styles.bottomPlayer}>
         <ProgressBar />
       </div>
-      <YouTubePlayer />
-
       <MoodOrb />
-      <Suspense fallback={null}>
-        <AudioLab />
-        <Visualizer />
-        <MobilePlayer />
-      </Suspense>
+      <AudioLab />
+      <Visualizer />
+      <MobilePlayer />
 
       <Toaster 
         position="top-center"

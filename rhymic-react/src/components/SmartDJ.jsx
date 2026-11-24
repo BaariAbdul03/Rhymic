@@ -38,7 +38,7 @@ const SmartDJ = () => {
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
   
   // Access local library for offline fallback
-  const allLocalSongs = useMusicStore((state) => state.songs);
+  const librarySongs = useMusicStore((state) => state.songs);
 
   const handleGenerate = async (e, isRegenerate = false) => {
     if (e && e.preventDefault) e.preventDefault();
@@ -54,15 +54,12 @@ const SmartDJ = () => {
     const timeoutId = setTimeout(() => controller.abort(), 45000);
 
     try {
-      const response = await smartDjApi.recommend(prompt, isRegenerate);
+      const response = await smartDjApi.recommend(prompt, isRegenerate, controller.signal);
 
       const data = response.data; // Now returns { title: "...", songs: [...] }
       
-      const processed = data.songs.map(s => ({
-         ...s,
-         cover: s.cover,
-         src: s.src
-      }));
+      const processed = data.songs;
+      if (!Array.isArray(processed) || !processed.length) throw new Error('No tracks returned');
       
       setStatusLabel(data.title || prompt.charAt(0).toUpperCase() + prompt.slice(1));
       setSource(data.source || '');
@@ -76,14 +73,15 @@ const SmartDJ = () => {
       const isQuotaError = error.response?.data?.error?.includes('quota') || error.response?.status === 429;
       const errorMsg = isQuotaError ? 'AI Limit Reached' : 'Offline Mix';
 
-      if (allLocalSongs.length > 0) {
+      const localSongs = librarySongs.filter(song => song.source === 'local');
+      if (localSongs.length > 0) {
         // IMPROVED FALLBACK: Keyword search in local library
-        const keywords = prompt.toLowerCase().split(' ');
-        const matches = allLocalSongs.filter(s => 
-          keywords.some(k => s.title.toLowerCase().includes(k) || s.artist.toLowerCase().includes(k))
+        const keywords = prompt.toLowerCase().trim().split(/\s+/);
+        const matches = localSongs.filter(song =>
+          keywords.some(word => `${song.title} ${song.artist ?? ''}`.toLowerCase().includes(word))
         );
         
-        const fallback = matches.length > 0 ? matches.slice(0, 10) : [...allLocalSongs].sort(() => 0.5 - Math.random()).slice(0, 10);
+        const fallback = (matches.length > 0 ? matches : localSongs).slice(0, 10);
         
         setGeneratedSongs(fallback);
         setSongs(fallback);

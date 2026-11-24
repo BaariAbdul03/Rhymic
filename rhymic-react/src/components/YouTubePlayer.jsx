@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMusicStore } from '../store/musicStore';
+import { useUIStore } from '../store/uiStore';
 import styles from './YouTubePlayer.module.css';
 
 let playerApi;
@@ -38,13 +39,44 @@ function loadPlayerApi() {
 function EmbeddedPlayer({ song }) {
   const mount = useRef(null);
   const playerRef = useRef(null);
+  const playerVisible = useRef(false);
+  const [collapsed, setCollapsed] = useState(false);
   const isPlaying = useMusicStore(state => state.isPlaying);
+  const obscured = useUIStore(state =>
+    state.isPlayerOpen || state.isAudioLabOpen || state.isVisualizerOpen || state.isSidebarOpen
+  );
   const videoId = String(song.id);
   const bundledSong = useMusicStore(state =>
     state.songs.find(track => track.src === bundledVersions[videoId])
   );
   const watchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
   const playerError = useMusicStore(state => state.streamFallbackUrl === watchUrl ? state.error : null);
+  const showVideo = !collapsed || isPlaying;
+
+  const canPlay = useCallback(() => {
+    const ui = useUIStore.getState();
+    return playerVisible.current && !document.hidden &&
+      !ui.isPlayerOpen && !ui.isAudioLabOpen && !ui.isVisualizerOpen && !ui.isSidebarOpen;
+  }, []);
+
+  const syncPlayer = useCallback(() => {
+    const player = playerRef.current;
+    if (!player) return;
+
+    if (useMusicStore.getState().isPlaying && canPlay()) {
+      if (player.getPlayerState() !== 1) player.playVideo();
+    } else {
+      player.pauseVideo();
+    }
+  }, [canPlay]);
+
+  const toggleVideo = () => {
+    if (showVideo) {
+      playerRef.current?.pauseVideo();
+      useMusicStore.getState().setIsPlaying(false);
+    }
+    setCollapsed(showVideo);
+  };
 
   const playBundledVersion = () => {
     const { queue, setQueue, setCurrentSong } = useMusicStore.getState();
@@ -62,6 +94,7 @@ function EmbeddedPlayer({ song }) {
     let active = true;
     let player;
     let readyTimer;
+    let observer;
     const host = mount.current;
     const onFailure = () => {
       if (active) {
@@ -76,17 +109,13 @@ function EmbeddedPlayer({ song }) {
       const iframe = document.createElement('iframe');
       iframe.title = 'YouTube music player';
       iframe.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
-      iframe.allowFullscreen = true;
       iframe.referrerPolicy = 'strict-origin-when-cross-origin';
       const params = new URLSearchParams({
         enablejsapi: '1',
         origin: window.location.origin,
         playsinline: '1',
       });
-      iframe.src = `https://www.youtube.com/embed/${videoId}?${params}`;
-      host.appendChild(iframe);
-      readyTimer = window.setTimeout(onFailure, 10000);
-      player = new YT.Player(iframe, {
+      const events = {
         events: {
           onReady: ({ target }) => {
             if (!active) return;
@@ -94,11 +123,16 @@ function EmbeddedPlayer({ song }) {
             playerRef.current = target;
             store().setYouTubePlayer(target);
             target.setVolume(store().volume * 100);
-            if (store().isPlaying) target.playVideo();
+            syncPlayer();
           },
-          onStateChange: ({ data }) => {
+          onStateChange: ({ data, target }) => {
             if (!active) return;
             if (data === YT.PlayerState.PLAYING) {
+              if (!canPlay()) {
+                target.pauseVideo();
+                store().setIsPlaying(false);
+                return;
+              }
               if (store().streamFallbackUrl) store().clearError();
               store().setIsPlaying(true);
             }
@@ -110,8 +144,35 @@ function EmbeddedPlayer({ song }) {
           },
           onError: onFailure,
         },
-      });
+      };
+
+      // Wait for the embed document before the widget API starts messaging it.
+      iframe.addEventListener('load', () => {
+        if (!active) return;
+        try {
+          player = new YT.Player(iframe, events);
+        } catch {
+          onFailure();
+        }
+      }, { once: true });
+      iframe.src = `https://www.youtube.com/embed/${videoId}?${params}`;
+      host.appendChild(iframe);
+      observer = new IntersectionObserver(([entry]) => {
+        if (!active) return;
+        playerVisible.current = entry.intersectionRatio >= 0.51;
+        if (!playerVisible.current && playerRef.current?.getPlayerState() === YT.PlayerState.PLAYING) {
+          store().setIsPlaying(false);
+        }
+        syncPlayer();
+      }, { threshold: 0.51 });
+      observer.observe(iframe);
+      readyTimer = window.setTimeout(onFailure, 12000);
     }).catch(onFailure);
+
+    const onDocumentVisibility = () => {
+      if (document.hidden) store().setIsPlaying(false);
+    };
+    document.addEventListener('visibilitychange', onDocumentVisibility);
 
     const progressTimer = window.setInterval(() => {
       const current = playerRef.current;
@@ -123,28 +184,36 @@ function EmbeddedPlayer({ song }) {
       active = false;
       window.clearInterval(progressTimer);
       window.clearTimeout(readyTimer);
+      document.removeEventListener('visibilitychange', onDocumentVisibility);
+      observer?.disconnect();
+      playerVisible.current = false;
       playerRef.current = null;
       store().setYouTubePlayer(null);
       player?.destroy();
       host.replaceChildren();
     };
-  }, [videoId, watchUrl]);
+  }, [videoId, watchUrl, canPlay, syncPlayer]);
 
   useEffect(() => {
-    const player = playerRef.current;
-    if (!player) return;
-    if (isPlaying) player.playVideo();
-    else player.pauseVideo();
-  }, [isPlaying]);
+    if (obscured && isPlaying) useMusicStore.getState().setIsPlaying(false);
+    syncPlayer();
+  }, [isPlaying, obscured, syncPlayer]);
 
   return (
     <aside className={styles.player} aria-label={`YouTube player for ${song.title}`}>
-      <div ref={mount} />
-      <p role="status">{playerError}</p>
-      <a href={watchUrl} target="_blank" rel="noopener noreferrer">Open on YouTube</a>
-      {playerError && bundledSong && (
-        <button type="button" onClick={playBundledVersion}>Play bundled version</button>
-      )}
+      <div className={styles.content}>
+        <div ref={mount} className={styles.video} hidden={!showVideo} />
+        <div>
+          <button type="button" onClick={toggleVideo} aria-expanded={showVideo}>
+            {showVideo ? (isPlaying ? 'Pause and hide video' : 'Hide video') : 'Show video'}
+          </button>
+          <a href={watchUrl} target="_blank" rel="noopener noreferrer">Open on YouTube</a>
+          <p role="status">{playerError}</p>
+          {playerError && bundledSong && (
+            <button type="button" onClick={playBundledVersion}>Play bundled version</button>
+          )}
+        </div>
+      </div>
     </aside>
   );
 }

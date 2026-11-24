@@ -206,7 +206,10 @@ def categorize_genres():
         return jsonify({})
 
     all_songs = Song.query.all()
-    library_context = [{'id': s.id, 'title': s.title, 'artist': s.artist, 'path': s.src} for s in all_songs]
+    library_context = [
+        {'id': song.to_dict()['id'], 'title': song.title, 'artist': song.artist, 'path': song.src}
+        for song in all_songs
+    ]
 
     ai_prompt = f"""
     Categorize the following songs into the provided genres.

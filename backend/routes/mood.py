@@ -15,8 +15,8 @@ MOODS = ["Energetic", "Chill", "Melancholy", "Euphoric", "Focus", "Romantic"]
 def get_song_mood(song_id):
     # Determine the lookup logic based on whether song_id is an integer or string (youtube_id)
     song = None
-    if song_id.isdigit():
-        song = Song.query.get(int(song_id))
+    if song_id.isascii() and song_id.isdigit() and len(song_id) <= 10 and int(song_id) <= 2147483647:
+        song = db.session.get(Song, int(song_id))
     
     if not song:
         song = Song.query.filter_by(youtube_id=song_id).first()
@@ -81,4 +81,4 @@ Respond ONLY with the mood name. Nothing else."""
         
     except Exception as e:
         print(f"[AI Mood] Error: {e}")
-        return jsonify({"song_id": song_id, "mood": "Chill", "cached": False, "error": str(e)}), 200
+        return jsonify({"song_id": song_id, "mood": "Chill", "cached": False, "error": "AI mood unavailable"}), 200

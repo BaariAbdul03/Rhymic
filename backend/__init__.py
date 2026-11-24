@@ -1,6 +1,7 @@
 import os
+import re
 import threading
-from flask import Flask, send_from_directory, jsonify
+from flask import Flask, Response, send_from_directory, jsonify
 from werkzeug.exceptions import NotFound
 
 from backend.config import config, _verify_database_url
@@ -60,7 +61,7 @@ def create_app(config_name=None):
         # Allows: same-origin resources, Google/YouTube thumbnails, audio streaming
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "img-src 'self' https://*.googleusercontent.com https://*.ytimg.com data:; "
+            "img-src 'self' https://*.googleusercontent.com https://*.ggpht.com https://*.ytimg.com data:; "
             "media-src 'self' blob: https://*.googlevideo.com; "
             "connect-src 'self'; "
             "script-src 'self' https://www.youtube.com; "
@@ -150,7 +151,13 @@ def create_app(config_name=None):
         Handles URL decoding, missing files, and fallback covers.
         """
         try:
-            return send_from_directory(app.config['ASSETS_DIR'], filename)
+            versioned = re.fullmatch(r"[\w-]+-[\w-]{8}\.(css|js)", filename)
+            response = send_from_directory(
+                app.config['ASSETS_DIR'], filename, max_age=31536000 if versioned else None
+            )
+            if versioned:
+                response.cache_control.immutable = True
+            return response
         except NotFound:
             # For images, fall back to the default cover
             if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')): 
@@ -160,7 +167,7 @@ def create_app(config_name=None):
                     pass
             # For audio files, return a proper 404 so the browser can trigger the
             # error handler instead of silently receiving HTML (SPA fallback).
-            return "Not Found", 404
+            return Response("Not Found", status=404, mimetype="text/plain")
 
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')

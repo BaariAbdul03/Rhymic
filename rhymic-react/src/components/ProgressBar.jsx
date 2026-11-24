@@ -124,11 +124,11 @@ const ProgressBar = () => {
           >
             <Shuffle size={18} />
           </button>
-          <button className={styles.controlBtn} onClick={prevSong} disabled={!currentSong}>
+          <button className={styles.controlBtn} onClick={prevSong} disabled={!currentSong} aria-label="Previous track">
             <SkipBack size={20} />
           </button>
           
-          <button className={styles.playPauseBtn} onClick={togglePlay} disabled={!currentSong}>
+          <button className={styles.playPauseBtn} onClick={togglePlay} disabled={!currentSong} aria-label={isPlaying ? 'Pause playback' : 'Resume playback'}>
             <AnimatePresence mode="wait">
               {isPlaying ? (
                 <motion.div
@@ -157,7 +157,7 @@ const ProgressBar = () => {
             </AnimatePresence>
           </button>
           
-          <button className={styles.controlBtn} onClick={nextSong} disabled={!currentSong}>
+          <button className={styles.controlBtn} onClick={nextSong} disabled={!currentSong} aria-label="Next track">
             <SkipForward size={20} />
           </button>
           <button 

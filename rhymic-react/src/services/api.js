@@ -99,17 +99,14 @@ export const likesApi = {
 };
 
 export const smartDjApi = {
-  recommend: (prompt, regenerate = false) => api.post('/ai/recommend', { prompt, regenerate })
+  recommend: (prompt, regenerate = false, signal) => api.post('/ai/recommend', { prompt, regenerate }, { signal })
 };
 
 export const moodApi = {
-  getSongMood: (songId, title, artist) => {
-    let url = `/mood/${songId}`;
-    if (title && artist) {
-      url += `?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}`;
-    }
-    return api.get(url);
-  }
+  getSongMood: (songId, title, artist) => api.get(`/mood/${encodeURIComponent(songId)}`, {
+    params: { title, artist },
+    timeout: 10000,
+  }),
 };
 
 export const streamApi = {

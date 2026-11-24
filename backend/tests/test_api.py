@@ -44,6 +44,50 @@ def test_stream_status(client, auth_headers):
     assert 'mode' in response.json
 
 
+def test_legacy_cover_url_redirects_to_sized_cdn_image(client):
+    response = client.get('/api/stream/thumbnail', query_string={
+        'url': 'https://yt3.googleusercontent.com/example=s0',
+    })
+    assert response.status_code == 302
+    assert response.location == 'https://yt3.googleusercontent.com/example=s512'
+    assert client.get('/api/stream/thumbnail', query_string={
+        'url': 'https://example.com/cover.jpg',
+    }).status_code == 404
+
+
+def test_fingerprinted_css_cache_and_missing_asset(app, client, tmp_path):
+    (tmp_path / 'index-AbCd1234.css').write_text('main { color: black; }')
+    app.config['ASSETS_DIR'] = str(tmp_path)
+    css = client.get('/assets/index-AbCd1234.css')
+    assert css.status_code == 200
+    assert css.mimetype == 'text/css'
+    assert css.cache_control.immutable
+    missing = client.get('/assets/index-AbCd5678.css')
+    assert missing.status_code == 404
+    assert missing.mimetype == 'text/plain'
+
+
+def test_ai_mood_uses_metadata_for_an_online_track(client, auth_headers, monkeypatch):
+    from backend.services import ai_service
+
+    monkeypatch.setattr(ai_service, 'is_configured', lambda: True)
+    monkeypatch.setattr(ai_service, 'chat', lambda *args, **kwargs: 'Romantic')
+    response = client.get('/api/mood/12345678901', query_string={
+        'title': 'Rehbara', 'artist': 'Abhijeet Srivastava',
+    }, headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json['mood'] == 'Romantic'
+
+
+def test_smart_dj_falls_back_to_bundled_songs(client, auth_headers, monkeypatch):
+    monkeypatch.delenv('GROQ_API_KEY', raising=False)
+    response = client.post('/api/ai/recommend', json={'prompt': 'Alan Walker'}, headers=auth_headers)
+    assert response.status_code == 200
+    assert response.json['source'] == 'local'
+    assert response.json['songs']
+    assert all(song['source'] == 'local' for song in response.json['songs'])
+
+
 def test_bundled_audio_supports_ranges_and_uploaded_audio(app, client, auth_headers):
     from pathlib import Path
     from urllib.parse import quote

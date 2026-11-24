@@ -30,7 +30,7 @@ jobs:
           
       - name: Run backend tests
         run: |
-          pytest backend/tests/ -v --cov=backend --cov-report=xml
+          python -m pytest backend/tests/ -v --cov=backend --cov-report=xml
         env:
           FLASK_CONFIG: test
           DATABASE_URL: sqlite:///:memory:

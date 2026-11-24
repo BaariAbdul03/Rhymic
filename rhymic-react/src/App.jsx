@@ -178,9 +178,8 @@ const AppContent = () => {
         }}
       />
 
-      {/* Global Error Toast — with YouTube fallback button for cloud-blocked streams */}
       <AnimatePresence>
-        {error && (
+        {error && !streamFallbackUrl && (
           <Motion.div
             className={styles.errorToast}
             initial={{ opacity: 0, y: 50, x: '-50%' }}
@@ -189,33 +188,9 @@ const AppContent = () => {
           >
             <div className={styles.errorIcon}>!</div>
             <span role="status" className={styles.errorMessage}>{error}</span>
-            {streamFallbackUrl && (
-              <div className={styles.fallbackActions}>
-                <a 
-                  href={streamFallbackUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.youtubeBtn}
-                >
-                  Play on YouTube
-                </a>
-                <button 
-                  className={styles.skipBtn}
-                  onClick={() => {
-                    const store = useMusicStore.getState();
-                    store.clearError();
-                    store.nextSong();
-                  }}
-                >
-                  Skip
-                </button>
-              </div>
-            )}
-            {!streamFallbackUrl && (
-              <button className={styles.dismissBtn} onClick={() => useMusicStore.getState().clearError()}>
-                ✕
-              </button>
-            )}
+            <button className={styles.dismissBtn} onClick={() => useMusicStore.getState().clearError()} aria-label="Dismiss error">
+              ✕
+            </button>
           </Motion.div>
         )}
       </AnimatePresence>

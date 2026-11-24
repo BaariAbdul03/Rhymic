@@ -3,6 +3,9 @@ import { useMusicStore } from '../store/musicStore';
 import styles from './YouTubePlayer.module.css';
 
 let playerApi;
+const bundledVersions = {
+  '8MUgi5liyMU': '/assets/music/Hindi/Muskurane Ki Wajah Tum Ho.mp3',
+};
 
 function loadPlayerApi() {
   if (window.YT?.Player) return Promise.resolve(window.YT);
@@ -37,7 +40,17 @@ function EmbeddedPlayer({ song }) {
   const playerRef = useRef(null);
   const isPlaying = useMusicStore(state => state.isPlaying);
   const videoId = String(song.id);
+  const bundledSong = useMusicStore(state =>
+    state.songs.find(track => track.src === bundledVersions[videoId])
+  );
   const watchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+  const playerError = useMusicStore(state => state.streamFallbackUrl === watchUrl ? state.error : null);
+
+  const playBundledVersion = () => {
+    const { queue, setQueue, setCurrentSong } = useMusicStore.getState();
+    setQueue(queue.map(track => track.id === song.id ? bundledSong : track));
+    setCurrentSong(bundledSong);
+  };
 
   useEffect(() => {
     const store = useMusicStore.getState;
@@ -127,7 +140,11 @@ function EmbeddedPlayer({ song }) {
   return (
     <aside className={styles.player} aria-label={`YouTube player for ${song.title}`}>
       <div ref={mount} />
+      <p role="status">{playerError}</p>
       <a href={watchUrl} target="_blank" rel="noopener noreferrer">Open on YouTube</a>
+      {playerError && bundledSong && (
+        <button type="button" onClick={playBundledVersion}>Play bundled version</button>
+      )}
     </aside>
   );
 }

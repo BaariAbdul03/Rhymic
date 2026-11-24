@@ -59,20 +59,17 @@ const OnlineSearch = () => {
   };
 
   const handlePlay = async (song, pool) => {
-    // Immediately start playing the selected song with the current pool as a temp queue
-    setQueue([song]);
+    setQueue(pool);
     setCurrentSong(song);
     
     // In the background, fetch a radio mix of related songs for the queue
     try {
       const res = await streamApi.getRelated(song.id);
-      if (res.data && res.data.length > 0) {
+      if (useMusicStore.getState().currentSong?.id === song.id && res.data?.length) {
         setQueue(res.data);
       }
     } catch {
       console.error("Failed to fetch related songs, keeping search results as queue");
-      // Fallback: use the original pool (search results or trending)
-      setQueue(pool);
     }
   };
 

@@ -147,7 +147,9 @@ function EmbeddedPlayer({ song }) {
   }, [isPlaying]);
 
   return (
-    <aside className={styles.player} aria-label={`YouTube player for ${song.title}`}>
+    // `inert` keeps the off-screen player out of the tab order and accessibility
+    // tree; the iframe still renders and plays audio while parked off-screen.
+    <aside className={styles.player} aria-label={`YouTube player for ${song.title}`} inert>
       <div ref={mount} />
       <p role="status">{playerError}</p>
       <a href={watchUrl} target="_blank" rel="noopener noreferrer">Open on YouTube</a>

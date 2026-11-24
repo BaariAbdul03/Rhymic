@@ -1,16 +1,14 @@
-import os
 import json
-import re
 import random
 import hashlib
 import time
-import requests as http
-from google import genai
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 
 from backend.extensions import limiter
 from backend.models.song import Song
+from backend.services import ai_service
+from backend.services.ai_service import GroqError
 
 ai_bp = Blueprint('ai', __name__)
 
@@ -18,13 +16,10 @@ _dj_cache = {}
 CACHE_TTL = 7200    # 2 hours
 CACHE_MAX = 200     # max entries before evicting oldest
 
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_KEY = os.getenv("GROQ_API_KEY", "")
-
 DJ_SYSTEM_PROMPT = (
-    "You are a music expert DJ. Return ONLY a valid JSON array of song "
+    "You are a music expert DJ. Return ONLY a valid JSON object of song "
     "recommendations. No explanation, no markdown, no extra text. "
-    'Format: [{"title": "Song Name", "artist": "Artist Name"}] '
+    'Format: {"songs": [{"title": "Song Name", "artist": "Artist Name"}]} '
     "Return exactly 8 songs that match the vibe described. "
     "CRITICAL RULES:\n"
     "1. ARTIST: If the user mentions an artist/singer, ALL results MUST be by that artist.\n"
@@ -32,6 +27,12 @@ DJ_SYSTEM_PROMPT = (
     "3. ERA/GENRE: Strictly respect era (90s, 80s) and genre (Lofi, Rock, Party) requests.\n"
     "4. DIVERSITY: Ensure the 8 songs are distinct and high-quality."
 )
+
+DJ_USER_INSTRUCTIONS = (
+    "Generate the playlist for this request. Respond ONLY with JSON in the "
+    "specified format:\nRequest: "
+)
+
 
 def _cache_get(key):
     entry = _dj_cache.get(key)
@@ -47,29 +48,19 @@ def _cache_set(key, result):
     _dj_cache[key] = {"result": result, "timestamp": time.time(), "hits": 0}
 
 def _call_groq(prompt, model):
-    headers = {
-        "Authorization": f"Bearer {GROQ_KEY}",
-        "Content-Type": "application/json"
-    }
-    body = {
-        "model": model,
-        "response_format": {"type": "json_object"},
-        "max_tokens": 400,
-        "temperature": 0.8 if "70b" in model else 0.7,
-        "messages": [
-            {"role": "system", "content": DJ_SYSTEM_PROMPT},
-            {"role": "user", "content": prompt}
-        ]
-    }
-    resp = http.post(GROQ_API_URL, json=body, headers=headers, timeout=15)
-    remaining = resp.headers.get("x-ratelimit-remaining-requests", "?")
-    print(f"[SmartDJ] Groq {model} — remaining requests today: {remaining}")
-    resp.raise_for_status()
-    content = resp.json()["choices"][0]["message"]["content"]
-    parsed = json.loads(content)
-    if isinstance(parsed, list):
-        return parsed
-    return parsed.get("songs", list(parsed.values())[0])
+    """Request 8 songs from a Groq model and return a [{title, artist}] list."""
+    parsed = ai_service.chat_json(
+        DJ_USER_INSTRUCTIONS + prompt,
+        system=DJ_SYSTEM_PROMPT,
+        model=model,
+        max_tokens=1200,
+        temperature=0.8,
+        json_mode=True,
+    )
+    songs = ai_service.extract_songs_array(parsed)
+    if not songs:
+        raise GroqError("No songs in AI response")
+    return songs
 
 def _resolve_tracks(tracks):
     from backend.routes.stream import ytmusic, fix_thumbnail
@@ -106,42 +97,6 @@ def _resolve_tracks(tracks):
                 result_songs.append(data)
     return result_songs
 
-def _call_gemini(user_prompt):
-    ai_model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    api_key = os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        raise Exception("No API Key API")
-        
-    client = genai.Client(api_key=api_key)
-
-    ai_prompt = f"""
-    Role: Precise Music Librarian with access to the entire world's music.
-    User Request: "{user_prompt}"
-    
-    INSTRUCTIONS:
-    1. Act as a world-class DJ and create the perfect playlist of 10 songs based on the vibe.
-    2. STRICT REQUIREMENT: Only suggest songs in the specific language or genre requested. If the user asks for 'Hindi', 'Punjabi', or 'K-Pop', do NOT include English or Western songs.
-    3. PRIORITIZE: Choose fresh, popular, and high-quality tracks suitable for online streaming.
-    4. Respond ONLY with a raw JSON valid object containing two keys: "title" (a 2-4 word playlist name) and "tracks" (an array of 10 objects, each with "title" and "artist").
-    
-    Output Example:
-    {{"title": "Midnight Vibe", "tracks": [{{"title": "Blinding Lights", "artist": "The Weeknd"}}, {{"title": "Starboy", "artist": "The Weeknd"}}]}}
-    """
-    response = client.models.generate_content(model=ai_model_name, contents=ai_prompt)
-    if not response or not response.text:
-        raise Exception("Empty AI response")
-
-    match = re.search(r'\{.*\}', response.text.replace("```json", "").replace("```", ""), re.DOTALL)
-    result_dict = json.loads(match.group(0)) if match else {"tracks": []}
-    tracks = result_dict.get("tracks", [])
-    if not tracks:
-         raise Exception("No tracks in JSON")
-    
-    resolved = _resolve_tracks(tracks)
-    if not resolved:
-        raise Exception("No tracks resolved")
-    return resolved
-
 def _local_keyword_search(prompt):
     all_s = Song.query.all()
     # Keeping existing random fallback for simplicity and stability if local search breaks.
@@ -153,6 +108,18 @@ def _local_keyword_search(prompt):
 @jwt_required()
 @limiter.limit("10 per minute; 50 per hour")
 def recommend_songs():
+    if not ai_service.is_configured():
+        print("[SmartDJ] GROQ_API_KEY missing — using local search")
+        data = request.get_json() or {}
+        prompt = (data.get("prompt") or "Mix").strip()
+        songs = _local_keyword_search(prompt)
+        return jsonify({
+            "title": f"Local Mix: {prompt.title()}",
+            "songs": songs,
+            "source": "local",
+            "cached": False
+        })
+
     data = request.get_json()
     prompt = (data.get("prompt") or "").strip()
     regenerate = data.get("regenerate", False)
@@ -172,50 +139,37 @@ def recommend_songs():
                 "cached": True
             })
 
-    # Layer 1 — Groq 70B
+    # Layer 1 — Groq GPT-OSS 120B (quality)
     try:
-        raw_songs = _call_groq(prompt, "llama-3.3-70b-versatile")
+        raw_songs = _call_groq(prompt, ai_service._primary_model())
         songs = _resolve_tracks(raw_songs)
         if not songs: raise Exception("Resolution failed")
         _cache_set(cache_key, songs)
         return jsonify({
             "title": prompt.title(),
             "songs": songs, 
-            "source": "groq-70b", 
+            "source": "groq-120b", 
             "cached": False
         })
     except Exception as e:
-        print(f"[SmartDJ] Groq 70B failed: {e} — trying 8B")
+        print(f"[SmartDJ] Groq 120B failed: {e} — trying 20B")
 
-    # Layer 2 — Groq 8B
+    # Layer 2 — Groq GPT-OSS 20B (fast fallback)
     try:
-        raw_songs = _call_groq(prompt, "llama-3.1-8b-instant")
+        raw_songs = _call_groq(prompt, ai_service._small_model())
         songs = _resolve_tracks(raw_songs)
         if not songs: raise Exception("Resolution failed")
         _cache_set(cache_key, songs)
         return jsonify({
             "title": prompt.title(),
             "songs": songs, 
-            "source": "groq-8b", 
+            "source": "groq-20b", 
             "cached": False
         })
     except Exception as e:
-        print(f"[SmartDJ] Groq 8B failed: {e} — trying Gemini")
+        print(f"[SmartDJ] Groq 20B failed: {e} — using local search")
 
-    # Layer 3 — Gemini (preserve existing logic exactly)
-    try:
-        songs = _call_gemini(prompt)
-        _cache_set(cache_key, songs)
-        return jsonify({
-            "title": prompt.title(),
-            "songs": songs, 
-            "source": "gemini", 
-            "cached": False
-        })
-    except Exception as e:
-        print(f"[SmartDJ] Gemini failed: {e} — using local search")
-
-    # Layer 4 — Local keyword search (preserve existing logic exactly)
+    # Layer 3 — Local keyword search
     try:
         songs = _local_keyword_search(prompt)
         return jsonify({
@@ -237,10 +191,8 @@ def categorize_genres():
         return jsonify({"message": "Missing categories list"}), 400
         
     categories = data.get('categories')
-    ai_model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-    api_key = os.environ.get("GOOGLE_API_KEY")
 
-    if not api_key:
+    if not ai_service.is_configured():
         return jsonify({})
 
     all_songs = Song.query.all()
@@ -264,10 +216,7 @@ def categorize_genres():
     {{"Rap": [3, 8], "Hindi": ["vID-123", "vID-456"]}}
     """
     try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(model=ai_model_name, contents=ai_prompt)
-        match = re.search(r'\{.*\}', response.text.replace("```json", ""), re.DOTALL)
-        result = json.loads(match.group(0)) if match else {}
+        result = ai_service.chat_json(ai_prompt, max_tokens=2000, temperature=0.2)
         return jsonify(result)
     except Exception as e:
         print(f"AI Categorize Error: {e}")

@@ -3,8 +3,7 @@ from flask_jwt_extended import jwt_required
 from backend.extensions import db, limiter
 from backend.models.song import Song
 from backend.models.mood import SongMood
-import os
-from google import genai
+from backend.services import ai_service
 
 mood_bp = Blueprint('mood', __name__)
 
@@ -22,7 +21,7 @@ def get_song_mood(song_id):
     if not song:
         song = Song.query.filter_by(youtube_id=song_id).first()
     
-    # NEW: Fallback metadata for songs not yet in DB (common for online search results)
+    # Fallback metadata for songs not yet in DB (common for online search results)
     title = request.args.get('title')
     artist = request.args.get('artist')
 
@@ -35,39 +34,26 @@ def get_song_mood(song_id):
         if cached_mood:
             return jsonify({"song_id": song_id, "mood": cached_mood.mood, "cached": True}), 200
     
-    # Use Gemini to detect mood (Using song object or query params)
+    # Use Groq to detect mood (Using song object or query params)
     t = song.title if song else title
     a = song.artist if song else artist
     s = song.src if song else "Online Stream"
 
-    prompt = f"""
-    Analyze the following song and determine its primary mood based on its title and artist.
-    Title: {t}
-    Artist: {a}
-    Path info: {s}
+    prompt = f"""Analyze the following song and determine its primary mood based on its title and artist.
+Title: {t}
+Artist: {a}
+Path info: {s}
 
-    You must select EXACTLY ONE of these moods: {', '.join(MOODS)}.
-    Respond ONLY with the mood name. Nothing else.
-    """
+You must select EXACTLY ONE of these moods: {', '.join(MOODS)}.
+Respond ONLY with the mood name. Nothing else."""
     
     try:
-        ai_model_name = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-        api_key = os.environ.get("GOOGLE_API_KEY")
-        
-        if not api_key:
-            print("[AI Mood] Missing GOOGLE_API_KEY")
+        if not ai_service.is_configured():
+            print("[AI Mood] Missing GROQ_API_KEY")
             return jsonify({"song_id": song_id, "mood": "Chill", "cached": False, "error": "No API Key"}), 200
-            
-        client = genai.Client(api_key=api_key)
         
         print(f"[AI Mood] Analyzing: {t} by {a}...")
-        response = client.models.generate_content(model=ai_model_name, contents=prompt)
-        
-        if not response or not response.text:
-            print(f"[AI Mood] Empty response or Safety Block for: {t}")
-            return jsonify({"song_id": song_id, "mood": "Chill", "cached": False, "error": "Empty AI response"}), 200
-
-        ai_mood = response.text.strip()
+        ai_mood = ai_service.chat(prompt, max_tokens=200, temperature=0.1)
         print(f"[AI Mood] Raw AI Response: {ai_mood}")
         
         # Validation: check if response contains one of the moods

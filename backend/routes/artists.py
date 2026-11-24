@@ -1,11 +1,10 @@
-import os
 import re
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
 import requests
-from google import genai
 from backend.models.song import Song, ArtistImage
 from backend.extensions import db, limiter
+from backend.services import ai_service
 
 artists_bp = Blueprint('artists', __name__)
 
@@ -69,7 +68,7 @@ def get_artist_profile(name):
     """
     Get an artist's profile using LOCAL library data.
     Returns the artist's songs from the local DB, image from iTunes, 
-    and similar artists from Gemini AI.
+    and similar artists from Groq AI.
     """
     clean_name = re.sub(r'(?i)\s*[\(\[]?(feat\.?|ft\.?|with|x|&).+', '', name).strip()
     
@@ -82,18 +81,17 @@ def get_artist_profile(name):
     # Get image from iTunes
     img = fetch_itunes_artist_image(clean_name)
     
-    # Get similar artists from Gemini
+    # Get similar artists from Groq
     similar = []
     try:
-        api_key = os.environ.get("GOOGLE_API_KEY")
-        if api_key:
-            client = genai.Client(api_key=api_key)
-            res = client.models.generate_content(
-                model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
-                contents=f"List 4 musical artists similar to '{clean_name}'. "
-                         f"Reply ONLY with a comma separated list of names."
+        if ai_service.is_configured():
+            res = ai_service.chat(
+                f"List 4 musical artists similar to '{clean_name}'. "
+                f"Reply ONLY with a comma separated list of names.",
+                max_tokens=120,
+                temperature=0.5,
             )
-            similar = [x.strip() for x in res.text.split(',')]
+            similar = [x.strip() for x in res.split(',') if x.strip()]
     except Exception as e:
         print(f"Error fetching similar artists for {clean_name}: {e}")
         

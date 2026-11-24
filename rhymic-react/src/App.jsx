@@ -113,7 +113,6 @@ const AppContent = () => {
       
       <main className={styles.mainWrapper}>
         <Topbar />
-        <YouTubePlayer />
         <div className={styles.scrollableContent}>
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
@@ -141,6 +140,8 @@ const AppContent = () => {
       <div className={styles.bottomPlayer}>
         <ProgressBar />
       </div>
+      <YouTubePlayer />
+
       <MoodOrb />
       <AudioLab />
       <Visualizer />

@@ -16,7 +16,7 @@ services:
       - key: FLASK_CONFIG
         value: production
 
-      # ── Online Streaming Configuration ────────────────────────────
+      # ── Online Streaming Configuration ────────────────────────────────
       # YouTube blocks datacenter IPs. Three layers of bypass are available:
       #
       #   Layer 1: Piped instances (works out of the box, no setup needed)
@@ -31,18 +31,18 @@ services:
       - key: ONLINE_STREAM_PROVIDER
         value: extractor
 
-      # ═════════════════════════════════════════════════════════════╗
+      # ═════════════════════════════════════════════════════════════════╗
       # ║  LAYER 1 — Piped Instance Override                           ║
-      # ╚══════════════════════════════════════════════════════════════╝
+      # ╚════════════════════════════════════════════════════════════════╝
       # Piped instances are curated by default. Override with comma-separated
       # custom API URLs if you have private instances:
       #   YT_PIPED_INSTANCES=https://piped.example.com/api
       - key: YT_PIPED_INSTANCES
         sync: false
 
-      # ═════════════════════════════════════════════════════════════╗
+      # ═════════════════════════════════════════════════════════════════╗
       # ║  LAYER 2 — YouTube OAuth Credentials                         ║
-      # ╚══════════════════════════════════════════════════════════════╝
+      # ╚════════════════════════════════════════════════════════════════╝
       # Generate a ONE-TIME OAuth credential locally and paste it here.
       # The resolver microservice uses this to authenticate with YouTube
       # as a TV device, which YouTube trusts from ANY IP.
@@ -57,9 +57,9 @@ services:
       - key: YT_OAUTH_CREDENTIALS
         sync: false
 
-      # ═════════════════════════════════════════════════════════════╗
+      # ═════════════════════════════════════════════════════════════════╗
       # ║  LAYER 3 — Cloudflare WARP Sidecar Proxy                     ║
-      # ╚══════════════════════════════════════════════════════════════╝
+      # ╚════════════════════════════════════════════════════════════════╝
       # WARP routes yt-dlp traffic through Cloudflare's residential-like
       # IPs, bypassing YouTube's datacenter block. Uses wireproxy (userspace
       # WireGuard client — no TUN device needed).

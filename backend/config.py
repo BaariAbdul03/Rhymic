@@ -6,8 +6,16 @@ load_dotenv()
 
 
 def _normalize_database_url(url):
-    if url and url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql://", 1)
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    # SQLAlchemy >= 2.1 defaults to the psycopg3 dialect for plain
+    # postgresql:// URLs, which is NOT in our requirements. Pin the
+    # dialect to psycopg2 (psycopg2-binary) explicitly so the driver
+    # never changes under us.
+    if url.startswith("postgresql://") and "+" not in url.split("://", 1)[0]:
+        url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
     return url
 
 
@@ -15,7 +23,7 @@ def _verify_database_url(url, allow_fallback=True):
     """
     Test if the configured database URL is reachable.
     Returns the URL if healthy, or None if the database is unreachable
-    (e.g. Supabase free-tier paused after inactivity).
+    (e.g. Neon compute suspended and not yet awake, or a bad URL).
     """
     if not url or url.startswith('sqlite'):
         return url  # SQLite is always local, no check needed
@@ -52,6 +60,8 @@ class Config:
     USING_SQLITE_FALLBACK = _verified_url is None and _raw_database_url is not None
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # Neon: pool_pre_ping recycles dead connections after compute auto-suspend,
+    # pool_recycle=300 matches Neon's idle connection timeout.
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
         "pool_recycle": 300,
@@ -66,10 +76,6 @@ class Config:
     # Allowed CORS Origins — explicit allowlist (never wildcard)
     _allowed = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:5000')
     ALLOWED_ORIGINS = _allowed.split(',')
-
-    # Supabase (Storage & General API)
-    SUPABASE_URL = os.environ.get('SUPABASE_URL')
-    SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY')
 
 class DevelopmentConfig(Config):
     DEBUG = True

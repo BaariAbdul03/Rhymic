@@ -10,7 +10,6 @@ from backend.utils.errors import register_error_handlers
 from backend.services.scanner import scan_library
 from backend.services.metadata_fixer import auto_fix_metadata
 from backend.services.online_provider import get_online_provider_status
-from backend.services.keepalive import start_background_keepalive
 from backend.services.structured_logging import setup_logging, log_request
 
 
@@ -26,9 +25,9 @@ def create_app(config_name=None):
     # Log database status on startup
     if app.config.get('USING_SQLITE_FALLBACK'):
         print("=" * 60)
-        print("[WARN] Running on SQLite fallback — Supabase DB is paused!")
-        print("[WARN] Data from your Supabase database is NOT available.")
-        print("[WARN] Unpause at: https://supabase.com/dashboard")
+        print("[WARN] Running on SQLite fallback — Neon DB is unreachable!")
+        print("[WARN] Data from your Neon database is NOT available.")
+        print("[WARN] Check your DATABASE_URL and Neon project status.")
         print("=" * 60)
 
     # Initialize Extensions
@@ -59,9 +58,9 @@ def create_app(config_name=None):
         # Allows: same-origin resources, Google/YouTube thumbnails, audio streaming
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "img-src 'self' https://*.googleusercontent.com https://*.ytimg.com https://*.supabase.co data:; "
+            "img-src 'self' https://*.googleusercontent.com https://*.ytimg.com data:; "
             "media-src 'self' https://*.googlevideo.com; "
-            "connect-src 'self' https://*.supabase.co; "
+            "connect-src 'self'; "
             "script-src 'self'; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
@@ -100,7 +99,7 @@ def create_app(config_name=None):
             "status": "ok" if status_code == 200 else "error",
             "database": db_status,
             "online_provider": provider_status,
-            "message": "Supabase DB is paused — running on SQLite fallback" if app.config.get('USING_SQLITE_FALLBACK') else "All systems operational"
+            "message": "Neon DB unreachable — running on SQLite fallback" if app.config.get('USING_SQLITE_FALLBACK') else "All systems operational"
         }), status_code
 
     # Metrics endpoint for monitoring (Prometheus-compatible)
@@ -193,42 +192,17 @@ def create_app(config_name=None):
 def _initialize_app(app):
     with app.app_context():
         try:
-            # Note: with migrate, we might not want to db.create_all() unconditionally
-            # but we'll leave it for backward compatibility before migrations run
-            if app.config.get("DEBUG") or app.config.get("TESTING") or app.config.get("USING_SQLITE_FALLBACK"):
-                db.create_all()
-
-            # MIGRATION: Attempt to add/update profile_pic column safely
-            # Only run on PostgreSQL (not SQLite fallback)
-            if not app.config.get('USING_SQLITE_FALLBACK') and not app.config.get("REQUIRE_DATABASE_URL"):
-                try:
-                    with db.engine.connect() as conn:
-                        from sqlalchemy import text
-                        try:
-                            conn.execute(text('ALTER TABLE "user" ADD COLUMN profile_pic TEXT'))
-                            conn.commit()
-                            print("Migrated: Added profile_pic column")
-                        except Exception:
-                            conn.rollback() 
-                            try:
-                                conn.execute(text('ALTER TABLE "user" ALTER COLUMN profile_pic TYPE TEXT'))
-                                conn.commit()
-                                print("Migrated: Updated profile_pic to TEXT")
-                            except Exception:
-                                conn.rollback()
-                except Exception as e:
-                    pass # Expected if already migrated
+            # create_all is idempotent — it only creates missing tables. Running it
+            # unconditionally means a fresh Neon database is fully provisioned on
+            # first boot (including the stored_file table used by /api/files/*).
+            db.create_all()
 
             # Scan Library (Fast)
             scan_library(app)
 
-            # Start background Supabase keep-alive thread
-            start_background_keepalive()
-
             # Background Metadata Fixer (Slow). Disabled by default in production
-
-            # so multiple web workers do not duplicate Gemini calls.
-            if os.getenv("GOOGLE_API_KEY") and os.getenv("ENABLE_METADATA_FIXER", "false").lower() == "true":
+            # so multiple web workers do not duplicate Groq calls.
+            if os.getenv("GROQ_API_KEY") and os.getenv("ENABLE_METADATA_FIXER", "false").lower() == "true":
                 def run_background_fix():
                     auto_fix_metadata(app)
                 thread = threading.Thread(target=run_background_fix)

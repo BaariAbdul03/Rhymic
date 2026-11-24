@@ -286,10 +286,10 @@ def upload_profile_pic():
             ext = '.jpg'  # Default to jpg if extension is invalid
         
         try:
-            from backend.services.storage_service import upload_profile_pic as upload_to_supabase
+            from backend.services.storage_service import upload_profile_pic as upload_to_db
             
-            # Try Supabase upload first
-            remote_url = upload_to_supabase(file_bytes, file.filename)
+            # Try Neon DB storage first
+            remote_url = upload_to_db(file_bytes, file.filename)
             
             if remote_url:
                 img_url = remote_url

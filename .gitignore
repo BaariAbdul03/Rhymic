@@ -47,3 +47,9 @@ SETUP_GUIDE.md
 GEMINI.md
 README.md
 cookies.txt
+
+# Credentials & secrets (NEVER commit)
+YT_OAUTH_CREDENTIALS.txt
+*OAUTH_CREDENTIALS*
+*credentials*.txt
+.env.local

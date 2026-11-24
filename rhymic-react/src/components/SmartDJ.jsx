@@ -90,7 +90,7 @@ const SmartDJ = () => {
         setStatusLabel(matches.length > 0 ? `Local Matches: ${prompt}` : errorMsg);
         setSource('local');
       } else {
-        toast.error(isQuotaError ? "Gemini Daily Limit Reached. Please try again tomorrow!" : "Could not generate playlist.");
+        toast.error(isQuotaError ? "AI Daily Limit Reached. Please try again tomorrow!" : "Could not generate playlist.");
       }
     } finally {
       clearTimeout(timeoutId);

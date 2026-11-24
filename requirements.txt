@@ -6,7 +6,6 @@ Flask-Migrate
 Flask-Bcrypt
 Flask-JWT-Extended
 Flask-Limiter
-google-genai
 python-dotenv
 email_validator
 requests
@@ -15,4 +14,4 @@ ytmusicapi
 yt-dlp
 pyotp
 qrcode
-supabase
+Pillow

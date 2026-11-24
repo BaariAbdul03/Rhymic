@@ -33,7 +33,7 @@ jobs:
           python -m pytest backend/tests/ -v --cov=backend --cov-report=xml
         env:
           FLASK_CONFIG: test
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: 'sqlite:///:memory:'
           
       - name: Upload coverage
         if: always()

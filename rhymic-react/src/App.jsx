@@ -25,6 +25,7 @@ import styles from './App.module.css';
 import { useMusicStore } from './store/musicStore';
 import { useAuthStore } from './store/authStore';
 import { useUIStore } from './store/uiStore';
+import YouTubePlayer from './components/YouTubePlayer';
 
 const OnlineSearch = lazy(() => import('./components/OnlineSearch'));
 const ArtistDetail = lazy(() => import('./components/ArtistDetail'));
@@ -51,8 +52,6 @@ const AppContent = () => {
   const token = useAuthStore((state) => state.token);
   const error = useMusicStore((state) => state.error);
   const streamFallbackUrl = useMusicStore((state) => state.streamFallbackUrl);
-  const nextSong = useMusicStore((state) => state.nextSong);
-  const clearStreamFallback = useMusicStore((state) => state.clearStreamFallback);
   const location = useLocation();
 
   // On token change (including initial mount), first validate the token
@@ -141,6 +140,7 @@ const AppContent = () => {
       <div className={styles.bottomPlayer}>
         <ProgressBar />
       </div>
+      <YouTubePlayer />
 
       <MoodOrb />
       <Suspense fallback={null}>
@@ -188,7 +188,7 @@ const AppContent = () => {
             exit={{ opacity: 0, y: 50, x: '-50%' }}
           >
             <div className={styles.errorIcon}>!</div>
-            <span className={styles.errorMessage}>{error}</span>
+            <span role="status" className={styles.errorMessage}>{error}</span>
             {streamFallbackUrl && (
               <div className={styles.fallbackActions}>
                 <a 
@@ -196,20 +196,13 @@ const AppContent = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   className={styles.youtubeBtn}
-                  onClick={() => {
-                    const store = useMusicStore.getState();
-                    store.clearStreamFallback();
-                    store.clearError();
-                    store.nextSong();
-                  }}
                 >
-                  ▶ Play on YouTube Music
+                  Play on YouTube
                 </a>
                 <button 
                   className={styles.skipBtn}
                   onClick={() => {
                     const store = useMusicStore.getState();
-                    store.clearStreamFallback();
                     store.clearError();
                     store.nextSong();
                   }}

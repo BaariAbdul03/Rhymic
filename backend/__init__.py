@@ -1,7 +1,7 @@
 import os
 import threading
 from flask import Flask, send_from_directory, jsonify
-from urllib.parse import unquote
+from werkzeug.exceptions import NotFound
 
 from backend.config import config, _verify_database_url
 from backend.extensions import db, bcrypt, jwt, cors, migrate, limiter
@@ -21,6 +21,8 @@ def create_app(config_name=None):
     app.config.from_object(config[config_name])
     app.config["PROPAGATE_EXCEPTIONS"] = False
     _validate_runtime_config(app)
+    if app.debug and not _verify_database_url(app.config['SQLALCHEMY_DATABASE_URI']):
+        app.config.update(SQLALCHEMY_DATABASE_URI='sqlite:///site.db', USING_SQLITE_FALLBACK=True)
 
     # Log database status on startup
     if app.config.get('USING_SQLITE_FALLBACK'):
@@ -59,9 +61,10 @@ def create_app(config_name=None):
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
             "img-src 'self' https://*.googleusercontent.com https://*.ytimg.com data:; "
-            "media-src 'self' https://*.googlevideo.com; "
+            "media-src 'self' blob: https://*.googlevideo.com; "
             "connect-src 'self'; "
-            "script-src 'self'; "
+            "script-src 'self' https://www.youtube.com; "
+            "frame-src https://www.youtube.com; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "frame-ancestors 'none'"
@@ -92,9 +95,6 @@ def create_app(config_name=None):
             except Exception:
                 provider_status["resolver_responsive"] = False
                 
-            if not provider_status.get("resolver_responsive"):
-                status_code = 503
-
         return jsonify({
             "status": "ok" if status_code == 200 else "error",
             "database": db_status,
@@ -150,15 +150,13 @@ def create_app(config_name=None):
         Handles URL decoding, missing files, and fallback covers.
         """
         try:
-            return send_from_directory(app.config['ASSETS_DIR'], unquote(filename))
-        except Exception as exc:
-            # Log the error for debugging in production
-            app.logger.warning(f"Asset not found: {filename} — {exc}")
+            return send_from_directory(app.config['ASSETS_DIR'], filename)
+        except NotFound:
             # For images, fall back to the default cover
             if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')): 
                 try:
                     return send_from_directory(app.config['ASSETS_DIR'], 'default_cover.jpg')
-                except Exception:
+                except NotFound:
                     pass
             # For audio files, return a proper 404 so the browser can trigger the
             # error handler instead of silently receiving HTML (SPA fallback).
@@ -192,10 +190,9 @@ def create_app(config_name=None):
 def _initialize_app(app):
     with app.app_context():
         try:
-            # create_all is idempotent — it only creates missing tables. Running it
-            # unconditionally means a fresh Neon database is fully provisioned on
-            # first boot (including the stored_file table used by /api/files/*).
-            db.create_all()
+            # Production schema changes are handled by the migration runner.
+            if not app.config.get("REQUIRE_DATABASE_URL"):
+                db.create_all()
 
             # Scan Library (Fast)
             scan_library(app)
@@ -209,8 +206,8 @@ def _initialize_app(app):
                 thread.daemon = True
                 thread.start()
                 
-        except Exception as e:
-            print(f"Initialization Error: {e}")
+        except Exception:
+            app.logger.exception("Library initialization failed")
 
 
 def _validate_runtime_config(app):

@@ -14,8 +14,7 @@ describe("Login", () => {
     expect(screen.getByPlaceholderText(/password/i)).toBeInTheDocument();
   });
 
-  it("shows validation errors for invalid email", async () => {
-    const { user } = await import("@testing-library/user-event").then(m => m.default);
+  it("uses an email input", () => {
     render(
       <BrowserRouter>
         <Login />

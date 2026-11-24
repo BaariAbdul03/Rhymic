@@ -60,15 +60,17 @@ def _get_random_proxy():
 
 # ── Status ───────────────────────────────────────────────────────────────────
 def get_online_provider_status():
-    mode = os.getenv("ONLINE_STREAM_PROVIDER", "extractor").strip().lower()
-    resolver_url = _resolver_url()
+    mode = os.getenv("ONLINE_STREAM_PROVIDER", "embed").strip().lower()
+    resolver_url = _resolver_url() if mode in {"extractor", "auto", "resolver"} else None
     return {
         "mode": mode,
         "enabled": mode != "disabled",
         "resolver_configured": bool(resolver_url),
         "resolver_url": resolver_url if resolver_url else None,
         "proxy_configured": bool(_STREAM_PROXY),
-        "piped_instances_available": len(_PIPED_INSTANCES_HEALTHY) > 0 if _PIPED_INSTANCES_HEALTHY else bool(_PIPED_INSTANCES_CACHE or _CURATED_PIPED_INSTANCES),
+        "piped_instances_available": mode in {"extractor", "auto", "piped"} and bool(
+            _PIPED_INSTANCES_HEALTHY or _PIPED_INSTANCES_CACHE or _CURATED_PIPED_INSTANCES
+        ),
     }
 
 
@@ -269,13 +271,13 @@ def _resolve_with_ytdlp(video_id):
 
 # ── Main Resolution ──────────────────────────────────────────────────────────
 def get_audio_stream_url(video_id):
+    mode = os.getenv("ONLINE_STREAM_PROVIDER", "embed").strip().lower()
+    if mode in {"embed", "disabled"}:
+        return None, None
+
     cached_url, cached_fmt = _cache_get(video_id)
     if cached_url:
         return cached_url, cached_fmt
-
-    mode = os.getenv("ONLINE_STREAM_PROVIDER", "extractor").strip().lower()
-    if mode == "disabled":
-        return None, None
 
     attempts = []
     if mode == "resolver":

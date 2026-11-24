@@ -166,14 +166,7 @@ def search_online():
 @stream_bp.route('/status', methods=['GET'])
 @jwt_required()
 def stream_status():
-    status = get_online_provider_status()
-    # Add a helpful message about cloud streaming limitations
-    if os.getenv("FLASK_CONFIG", "development") == "production":
-        status["cloud_notice"] = (
-            "YouTube blocks datacenter IPs. Streaming may be limited on cloud hosting. "
-            "Configure YT_OAUTH_CREDENTIALS or STREAM_PROXY for reliable playback."
-        )
-    return jsonify(status), 200
+    return jsonify(get_online_provider_status()), 200
 
 @stream_bp.route('/categories', methods=['GET'])
 @jwt_required()

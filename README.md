@@ -5,7 +5,7 @@
 RhyMic is a premium, full-stack music streaming platform designed with a high-fidelity glassmorphism aesthetic. It features a robust Web Audio engine, AI-driven song categorization, and a suite of enterprise-grade security features.
 
 > [!IMPORTANT]
-> **DEPLOYMENT NOTICE:** The "Online Songs" and "Smart DJ" streaming features are optimized for local development. Due to YouTube's rate limiting and IP blocking on cloud platforms like Render, these features may not function as expected on live deployments.
+Online tracks play in YouTube’s embedded player on Render. Some tracks require opening YouTube when the publisher restricts embedding. Bundled songs and uploaded audio use RhyMic’s native player and Audio Lab.
 
 ---
 
@@ -59,8 +59,8 @@ source .venv/bin/activate  # Or .venv\Scripts\activate on Windows
 # Install dependencies
 pip install -r requirements.txt
 
-# Run migrations (fresh Neon databases are also auto-provisioned on boot)
-flask db upgrade
+# Run migrations before starting the app against a fresh Neon database
+python scripts/run_migrations.py
 
 # Start server
 flask run -p 5000
@@ -86,7 +86,7 @@ GROQ_API_KEY=your_groq_key
 DATABASE_URL=postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require
 ```
 
-Neon connection strings are found in the Neon console under **Connection Details** — use the **pooled** string for the app (and the unpooled one for migrations if you hit pgbouncer errors).
+In Render, set `ONLINE_STREAM_PROVIDER=embed`. Set `DATABASE_URL` to the pooled Neon connection and `DATABASE_URL_UNPOOLED` to the direct connection for build migrations. Keep `JWT_SECRET_KEY` stable across deploys. For legacy accounts, see the [Neon data migration guide](docs/DATA_MIGRATION_SUPABASE_TO_NEON.md).
 
 ---
 

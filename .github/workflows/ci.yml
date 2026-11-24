@@ -81,23 +81,11 @@ jobs:
       - name: Install production deps
         run: pip install -r requirements.txt gunicorn
         
-      - name: Create production .env template
+      - name: Verify production startup against a disposable database
         run: |
-          echo "SECRET_KEY=${{ secrets.SECRET_KEY }}" > .env
-          echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> .env
-          echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" >> .env
-          echo "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" >> .env
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          echo "SUPABASE_SERVICE_KEY=${{ secrets.SUPABASE_SERVICE_KEY }}" >> .env
-          
-      - name: Run migrations
-        run: |
-          flask db init 2>/dev/null || true
-          flask db migrate -m "CI deployment"
-          flask db upgrade
+          python scripts/run_migrations.py
+          python -c "from backend import create_app; app = create_app('production'); assert app.test_client().get('/api/health').status_code == 200"
         env:
           FLASK_CONFIG: production
-          
-      - name: Verify build
-        run: |
-          python -c "from backend import create_app; app = create_app('production'); print('App builds OK')"
+          DATABASE_URL: sqlite:////tmp/rhymic-ci.db
+          JWT_SECRET_KEY: rhymic-ci-disposable-key

@@ -10,11 +10,8 @@ schema and crashes on the first redundant ALTER TABLE (DuplicateColumn).
 This runner resolves the state explicitly before touching anything:
 
     1. alembic_version present   -> normal upgrade() (the standard path)
-    2. missing, app tables exist -> stamp('head') then upgrade()
-       (schema was created by create_all() or restored from a dump and is
-        already at the current model state)
-    3. missing, no app tables    -> create_all() + stamp('head')
-       (mirrors first-boot provisioning so builds never depend on boot order)
+    2. unversioned legacy song schema -> run the guarded revision chain
+    3. current or fresh schema -> create missing tables, verify, and stamp head
 
 It also tolerates Neon cold starts by waiting for the database to answer
 before importing backend.config, which hard-fails in production when the
@@ -25,6 +22,9 @@ Usage: python scripts/run_migrations.py
 import os
 import sys
 import time
+from contextlib import closing
+
+from dotenv import load_dotenv
 
 # Make repo-root imports work regardless of the caller's cwd.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -38,18 +38,18 @@ def wait_for_database(max_wait=45):
         return
     try:
         import psycopg2
+        from sqlalchemy.engine import make_url
     except ImportError:
         return  # config.py will report the connection problem itself
+    url = make_url(url).set(drivername="postgresql").render_as_string(hide_password=False)
 
     deadline = time.time() + max_wait
     attempt = 0
     while True:
         attempt += 1
         try:
-            conn = psycopg2.connect(url, connect_timeout=10)
-            with conn.cursor() as cur:
+            with closing(psycopg2.connect(url, connect_timeout=10)) as conn, conn.cursor() as cur:
                 cur.execute("SELECT 1")
-            conn.close()
             print(f"[migrate] database reachable (attempt {attempt})")
             return
         except Exception as exc:
@@ -62,6 +62,9 @@ def wait_for_database(max_wait=45):
 
 
 def main():
+    load_dotenv()
+    if direct_url := os.getenv("DATABASE_URL_UNPOOLED"):
+        os.environ["DATABASE_URL"] = direct_url
     wait_for_database()
 
     from flask import Flask
@@ -69,6 +72,7 @@ def main():
 
     from backend.config import config
     from backend.extensions import db, migrate
+    import backend.models  # Register tables on metadata.
 
     # Minimal app: extensions only. Do NOT use create_app() here — it would
     # register routes, run scan_library() and create_all(), none of which
@@ -103,18 +107,23 @@ def main():
 
         if version_rows:
             print(f"[migrate] alembic_version at {version_rows[0]} — running upgrades")
-        elif tables:
-            print("[migrate] schema exists without alembic_version — "
-                  "stamping head (schema was created by create_all or a dump)")
-            fm_stamp(revision="head")
-        else:
-            print("[migrate] empty database — provisioning schema via create_all "
-                  "and stamping head")
-            import backend.models  # noqa: F401  (register models on metadata)
-            db.create_all()
-            fm_stamp(revision="head")
+            fm_upgrade()
+        elif "song" in tables and not {"youtube_id", "source"} <= {
+            column["name"] for column in inspector.get_columns("song")
+        }:
+            print("[migrate] unversioned legacy catalog — running upgrades")
+            fm_upgrade()
 
-        fm_upgrade()
+        db.create_all()
+        inspector = inspect(db.engine)
+        for table in db.metadata.sorted_tables:
+            actual = {column["name"] for column in inspector.get_columns(table.name)}
+            if missing := set(table.columns.keys()) - actual:
+                print(f"[migrate] {table.name} is missing expected columns: {', '.join(sorted(missing))}")
+                return 1
+
+        if not version_rows:
+            fm_stamp(revision="head")
         print("[migrate] done — database schema is up to date")
     return 0
 

@@ -28,20 +28,23 @@ def _verify_database_url(url, allow_fallback=True):
     if not url or url.startswith('sqlite'):
         return url  # SQLite is always local, no check needed
 
+    engine = None
     try:
         from sqlalchemy import create_engine, text
         engine = create_engine(url, connect_args={"connect_timeout": 5}, pool_pre_ping=True)
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        engine.dispose()
         print("[DB] PostgreSQL connection verified successfully.")
         return url
     except Exception as e:
-        print(f"[DB] WARNING: PostgreSQL unreachable ({type(e).__name__}: {e})")
+        print(f"[DB] PostgreSQL unreachable ({type(e).__name__}).")
         if not allow_fallback:
             raise RuntimeError("Configured DATABASE_URL is unreachable in production.") from e
         print("[DB] Falling back to local SQLite database.")
         return None
+    finally:
+        if engine is not None:
+            engine.dispose()
 
 
 class Config:
@@ -55,9 +58,8 @@ class Config:
     # DB Config — with automatic fallback if PostgreSQL is unreachable
     _raw_database_url = _normalize_database_url(os.environ.get('DATABASE_URL'))
 
-    _verified_url = _verify_database_url(_raw_database_url)
-    SQLALCHEMY_DATABASE_URI = _verified_url or 'sqlite:///site.db'
-    USING_SQLITE_FALLBACK = _verified_url is None and _raw_database_url is not None
+    SQLALCHEMY_DATABASE_URI = _raw_database_url or 'sqlite:///site.db'
+    USING_SQLITE_FALLBACK = False
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # Neon: pool_pre_ping recycles dead connections after compute auto-suspend,

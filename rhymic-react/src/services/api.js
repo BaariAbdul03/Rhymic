@@ -9,7 +9,7 @@ api.interceptors.request.use(
   (config) => {
     try {
       const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-      if (token) {
+      if (token && !config.headers.Authorization && !config.skipSession) {
         config.headers.Authorization = `Bearer ${token}`;
       }
     } catch {
@@ -29,7 +29,15 @@ export const setLogoutCallback = (cb) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (
+      [401, 422].includes(error.response?.status) &&
+      !error.config?.skipSession &&
+      error.config?.headers?.Authorization
+    ) {
+      // A late response from an earlier session must not log out a new login.
+      if (error.config.headers.Authorization !== `Bearer ${localStorage.getItem('token')}`) {
+        return Promise.reject(error);
+      }
       if (logoutCallback) {
         logoutCallback();
       } else {
@@ -53,7 +61,7 @@ api.interceptors.response.use(
 // --- API Methods ---
 
 export const authApi = {
-  login: (email, password, rememberMe) => api.post('/login', { email, password, rememberMe }),
+  login: (email, password, rememberMe) => api.post('/login', { email, password, rememberMe }, { skipSession: true }),
   signup: (name, email, password) => api.post('/signup', { name, email, password }),
   getMe: () => api.get('/user/me'),
   uploadProfilePic: (formData) => api.post('/user/upload_profile_pic', formData, {
@@ -62,7 +70,8 @@ export const authApi = {
   forgotPassword: (email) => api.post('/forgot-password', { email }),
   resetPassword: (email, pin, new_password) => api.post('/reset-password', { email, pin, new_password }),
   verify2FA: (code, tempToken, rememberMe) => api.post('/2fa/verify', { code, rememberMe }, {
-    headers: { Authorization: `Bearer ${tempToken}` }
+    headers: { Authorization: `Bearer ${tempToken}` },
+    skipSession: true,
   }),
   setup2FA: () => api.post('/2fa/setup'),
   enable2FA: (code) => api.post('/2fa/enable', { code }),

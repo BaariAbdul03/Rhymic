@@ -38,6 +38,7 @@ export const useAudioEngine = () => {
       }
 
       const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
       const ctx = new AudioContext();
       contextRef.current = ctx;
 

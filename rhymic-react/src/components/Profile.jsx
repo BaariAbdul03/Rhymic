@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import styles from './Profile.module.css';
 import { useAuthStore } from '../store/authStore';
 import { Camera, Mail, User } from 'lucide-react';

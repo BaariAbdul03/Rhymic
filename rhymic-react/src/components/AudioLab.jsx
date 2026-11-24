@@ -24,8 +24,6 @@ const AudioLab = () => {
   const setEqBand = useMusicStore((state) => state.setEqBand);
   const bassBoost = useMusicStore((state) => state.bassBoost);
   const setBassBoost = useMusicStore((state) => state.setBassBoost);
-  const virtualizer = useMusicStore((state) => state.virtualizer);
-  const setVirtualizer = useMusicStore((state) => state.setVirtualizer);
 
   // FIX C-1: Controlled select — tracks the active preset name so the dropdown
   // stays in sync with actual EQ state. Reset to 'Custom' when a band is moved

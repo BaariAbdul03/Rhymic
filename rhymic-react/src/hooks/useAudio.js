@@ -1,156 +1,71 @@
-// src/hooks/useAudio.js
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { useMusicStore } from '../store/musicStore';
 
 export const useAudio = () => {
-  const audio = useMemo(() => {
-    const a = new Audio();
-    a.crossOrigin = "anonymous";
-    return a;
-  }, []);
+  const [audio] = useState(() => {
+    const element = new Audio();
+    element.preload = 'metadata';
+    return element;
+  });
+  const song = useMusicStore(state => state.currentSong);
+  const isPlaying = useMusicStore(state => state.isPlaying);
+  const localSong = song?.source === 'online' ? null : song;
 
-  // Get state and actions
-  const currentSong = useMusicStore((state) => state.currentSong);
-  const isPlaying = useMusicStore((state) => state.isPlaying);
-  const volume = useMusicStore((state) => state.volume); // <-- ADD THIS
-  
-  // Get actions
-  const setAudioElement = useMusicStore((state) => state.setAudioElement);
-  const setIsPlaying = useMusicStore((state) => state.setIsPlaying);
-  const setCurrentTime = useMusicStore((state) => state.setCurrentTime);
-  const setDuration = useMusicStore((state) => state.setDuration);
-
-  // Effect 1: Register the audio element
-  // REMOVED 'volume' from this effect
   useEffect(() => {
-    setAudioElement(audio);
-  }, [audio, setAudioElement]);
-
-  // Effect 2: Load a new song
-  useEffect(() => {
-    if (currentSong) {
-      // If the song is an online track, route it through the Flask proxy to bypass CORS
-      // which would otherwise taint the Canvas Visualizer.
-      const trackSrc = currentSong.source === 'online' 
-        ? `/api/stream/proxy/${currentSong.id}` 
-        : currentSong.src;
-        
-      audio.src = trackSrc;
-      // Set volume one time on load from the store's state
-      audio.volume = useMusicStore.getState().volume;
-      audio.load();
-      if (isPlaying) {
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(e => {
-            if (e.name !== 'AbortError') {
-              console.error("Audio Play Error:", e);
-            }
-          });
-        }
-      }
-    }
-  }, [currentSong, audio]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Effect 3: Handle Play/Pause
-  useEffect(() => {
-    if (currentSong) {
-      if (isPlaying) {
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(e => {
-            if (e.name !== 'AbortError') {
-              console.error("Audio Play Error:", e);
-            }
-          });
-        }
-      } else {
-        audio.pause();
-      }
-    }
-  }, [isPlaying, audio]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // *** NEW Effect 4: Sync Volume ***
-  // This effect ONLY runs when volume changes and updates the audio element.
-  useEffect(() => {
-    audio.volume = volume;
-  }, [volume, audio]);
-
-  // Ref to prevent double-firing the smart fade
-  const hasTriggeredEndRef = useRef(false);
-
-  // Reset trigger on new song
-  useEffect(() => {
-    hasTriggeredEndRef.current = false;
-  }, [currentSong]);
-
-  // Effect 5: Attach audio event listeners
-  useEffect(() => {
-    const handleTimeUpdate = () => {
-      setCurrentTime(audio.currentTime);
-
-      // Smart Pre-fade (Phase 5): Trigger the nextSong fade sequence 400ms before
-      // the actual track officially ends on the DOM element.
-      // This allows the mathematical hardware fade to execute seamlessly instead
-      // of crashing abruptly at EOF.
-      if (audio.duration && audio.currentTime > 0) {
-        if (audio.duration - audio.currentTime <= 0.4 && !hasTriggeredEndRef.current) {
-          const { nextSong, repeat } = useMusicStore.getState();
-          if (!repeat) {
-            hasTriggeredEndRef.current = true;
-            nextSong();
-          }
-        }
+    const store = useMusicStore.getState;
+    store().setAudioElement(audio);
+    const updateTime = () => store().setCurrentTime(audio.currentTime);
+    const updateDuration = () => store().setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+    const onEnded = () => store().finishTrack();
+    const onError = () => {
+      const current = store().currentSong;
+      if (current && current.source !== 'online' && audio.getAttribute('src') === current.src) {
+        store().handlePlaybackError(`Could not play "${current.title}".`);
       }
     };
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-    };
-    // The native ended event is now a fallback in case timeupdate misses the 400ms window
-    const handleEnded = () => {
-      if (!hasTriggeredEndRef.current) {
-        const { nextSong, repeat } = useMusicStore.getState();
-        if (!repeat) {
-          hasTriggeredEndRef.current = true;
-          nextSong();
-        }
-      }
-    };
-
-    const handlePlaybackError = () => {
-      const { handlePlaybackError: storeErrorHandler, currentSong } = useMusicStore.getState();
-      if (!currentSong) {
-        storeErrorHandler('Playback failed.');
-        return;
-      }
-
-      // For online songs, YouTube blocking on cloud servers is expected.
-      // Construct the fallback URL directly from the video ID — no extra fetch needed.
-      if (currentSong.source === 'online' && currentSong.id) {
-        const fallbackUrl = `https://music.youtube.com/watch?v=${currentSong.id}`;
-        storeErrorHandler(
-          `"${currentSong.title}" can't stream from cloud servers. Play on YouTube instead.`,
-          fallbackUrl
-        );
-        return;
-      }
-
-      // Default error handling for local songs
-      storeErrorHandler(`Failed to play "${currentSong.title}".`);
-    };
-
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('error', handlePlaybackError);
-
+    audio.addEventListener('timeupdate', updateTime);
+    audio.addEventListener('loadedmetadata', updateDuration);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
     return () => {
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('error', handlePlaybackError);
+      audio.removeEventListener('timeupdate', updateTime);
+      audio.removeEventListener('loadedmetadata', updateDuration);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
+      audio.pause();
+      store().setAudioElement(null);
     };
-  }, [audio, setCurrentTime, setDuration]); // setIsPlaying removed — not called in this effect
+  }, [audio]);
 
-  return {}; // No return needed
+  useEffect(() => {
+    audio.pause();
+    if (localSong?.src) {
+      audio.src = localSong.src;
+      audio.volume = useMusicStore.getState().volume;
+      audio.loop = useMusicStore.getState().repeat;
+    } else {
+      audio.removeAttribute('src');
+      audio.load();
+    }
+  }, [audio, localSong]);
+
+  useEffect(() => {
+    if (!localSong?.src) return;
+    if (!isPlaying) {
+      audio.pause();
+      return;
+    }
+
+    let active = true;
+    audio.play().catch(error => {
+      const store = useMusicStore.getState();
+      if (active && store.currentSong === localSong && store.isPlaying && error.name !== 'AbortError') {
+        const message = error.name === 'NotAllowedError'
+          ? 'Press play again to start audio.'
+          : `Could not play "${localSong.title}".`;
+        store.handlePlaybackError(message);
+      }
+    });
+    return () => { active = false; };
+  }, [audio, localSong, isPlaying]);
 };

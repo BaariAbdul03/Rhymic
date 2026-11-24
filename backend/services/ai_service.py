@@ -58,10 +58,12 @@ def _post_chat(payload, timeout=25):
     body = {
         "model": payload.get("model", _primary_model()),
         "messages": payload["messages"],
-        "max_tokens": payload.get("max_tokens", 1024),
+        "max_completion_tokens": payload["max_tokens"],
         "temperature": payload.get("temperature", 0.7),
-        "reasoning_effort": payload.get("reasoning_effort", REASONING_EFFORT),
     }
+    if body["model"].startswith("openai/gpt-oss-"):
+        body["reasoning_effort"] = payload.get("reasoning_effort", REASONING_EFFORT)
+        body["include_reasoning"] = False
     if payload.get("json_mode"):
         body["response_format"] = {"type": "json_object"}
 
@@ -108,7 +110,7 @@ def chat(prompt, system=None, model=None, max_tokens=1024, temperature=0.7,
     }
     if reasoning_effort:
         payload["reasoning_effort"] = reasoning_effort
-    return _post_chat(payload)
+    return _post_chat(payload, timeout=timeout)
 
 
 def chat_json(prompt, system=None, model=None, max_tokens=1024,

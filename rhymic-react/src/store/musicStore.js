@@ -19,8 +19,8 @@ export const useMusicStore = create((set, get) => ({
   isPlaying: false,
   currentTime: 0,
   duration: 0,
-  errorTimeout: null,
-  streamFallbackUrl: null, // YouTube Music fallback when server-side streaming fails
+  streamFallbackUrl: null,
+  youtubePlayer: null,
 
   // --- Audio Engine / Lab ---
   audioContext: null,
@@ -40,7 +40,7 @@ export const useMusicStore = create((set, get) => ({
   // List of available moods for rotation
   _moodList: ["Chill", "Energetic", "Melancholy", "Euphoric", "Focus", "Romantic"],
 
-  fetchSongMood: (song) => {
+  fetchSongMood: () => {
     const { _moodList, moodIndex } = get();
     const nextIndex = (moodIndex + 1) % _moodList.length;
     
@@ -51,44 +51,15 @@ export const useMusicStore = create((set, get) => ({
   },
   shuffle: false,
   repeat: false,
-  clearError: () => {
-    const { errorTimeout } = get();
-    if (errorTimeout) clearTimeout(errorTimeout);
-    set({ error: null, errorTimeout: null });
-  },
+  clearError: () => set({ error: null, streamFallbackUrl: null }),
 
   handlePlaybackError: (message, fallbackUrl) => {
-    const { errorTimeout } = get();
-    if (errorTimeout) clearTimeout(errorTimeout);
-
-    // If this is a "stream unavailable" error from YouTube blocking, 
-    // store the YouTube fallback URL so the UI can show a "Play on YouTube" button
-    if (fallbackUrl) {
-      set({ 
-        error: message || "YouTube is blocking this stream on cloud servers.", 
-        isPlaying: false,
-        streamFallbackUrl: fallbackUrl
-      });
-      // Don't auto-skip — let the user decide to click the fallback or skip manually
-      return;
-    }
-
-    // Regular playback error (local file, network, etc.)
-    set({ 
-      error: message || "Playback failed. Skipping track...", 
-      isPlaying: false 
+    set({
+      error: message,
+      isPlaying: false,
+      streamFallbackUrl: fallbackUrl ?? null,
     });
-
-    // Auto-skip after 3 seconds
-    const timeout = setTimeout(() => {
-      set({ error: null, errorTimeout: null });
-      get().nextSong();
-    }, 3000);
-
-    set({ errorTimeout: timeout });
   },
-
-  clearStreamFallback: () => set({ streamFallbackUrl: null }),
 
   fetchSongs: async () => {
     set({ error: null });
@@ -209,7 +180,7 @@ export const useMusicStore = create((set, get) => ({
     try {
       await playlistsApi.addSong(playlistId, songId);
       return true;
-    } catch (error) {
+    } catch {
       set({ error: "Failed to add song to playlist" });
       return false;
     }
@@ -220,7 +191,7 @@ export const useMusicStore = create((set, get) => ({
     try {
       const response = await playlistsApi.getOne(playlistId);
       set({ currentPlaylist: response.data });
-    } catch (error) {
+    } catch {
       set({ error: "Failed to load playlist" });
     }
   },
@@ -255,6 +226,7 @@ export const useMusicStore = create((set, get) => ({
   },
   setQueue: (newQueue) => set({ queue: newQueue, originalQueue: newQueue }),
   setAudioElement: (audio) => set({ audioElement: audio }),
+  setYouTubePlayer: (player) => set({ youtubePlayer: player }),
   // --- Audio Effects Helper ---
   _triggerCrossfade: async (duration = 0.3, targetGain = 0) => {
     const { crossfadeNode, audioContext } = get();
@@ -268,15 +240,25 @@ export const useMusicStore = create((set, get) => ({
   },
 
   setCurrentSong: (song) => {
-    const { isPlaying } = get();
+    const { isPlaying, audioContext, audioElement, currentSong } = get();
+    if (song && song === currentSong) {
+      get().seek(0);
+    }
+    if (song?.source !== 'online' && audioContext && audioContext.state !== 'running') {
+      audioContext.resume().catch(() => {});
+    }
+    if (currentSong?.source !== 'online' && song?.source === 'online') audioElement?.pause();
     // Start fading out old song (non-blocking)
     if (isPlaying) get()._triggerCrossfade(0.15, 0);
     
     // Switch song immediately
     set((state) => ({
       currentSong: song,
-      isPlaying: true,
+      isPlaying: Boolean(song),
       currentTime: 0,
+      duration: song === currentSong ? state.duration : 0,
+      error: null,
+      streamFallbackUrl: null,
       recentlyPlayed: song
         ? [song, ...state.recentlyPlayed.filter((item) => item.id !== song.id)].slice(0, 20)
         : state.recentlyPlayed
@@ -288,12 +270,20 @@ export const useMusicStore = create((set, get) => ({
   },
 
   togglePlay: () => {
-    const { isPlaying } = get();
+    const { isPlaying, currentSong, audioContext } = get();
+    if (!currentSong) return;
+    if (currentSong.source === 'online') {
+      set({ isPlaying: !isPlaying });
+      return;
+    }
     if (isPlaying) {
       // Snappy fade out then pause
-      get()._triggerCrossfade(0.15, 0).then(() => set({ isPlaying: false }));
+      get()._triggerCrossfade(0.15, 0).then(() => {
+        if (get().currentSong === currentSong) set({ isPlaying: false });
+      });
     } else {
-      set({ isPlaying: true });
+      if (audioContext && audioContext.state !== 'running') audioContext.resume().catch(() => {});
+      set({ isPlaying: true, error: null });
       get()._triggerCrossfade(0.2, 1); // Fast fade in on resume
     }
   },
@@ -301,7 +291,23 @@ export const useMusicStore = create((set, get) => ({
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   setCurrentTime: (time) => set({ currentTime: time }),
   setDuration: (time) => set({ duration: time }),
-  seek: (time) => { const { audioElement } = get(); if (audioElement) audioElement.currentTime = time; set({ currentTime: time }); },
+  seek: (time) => {
+    const { audioElement, currentSong, youtubePlayer } = get();
+    if (currentSong?.source === 'online') youtubePlayer?.seekTo(time, true);
+    else if (audioElement) audioElement.currentTime = time;
+    set({ currentTime: time });
+  },
+  finishTrack: () => {
+    const { repeat, youtubePlayer, queue, nextSong } = get();
+    if (repeat && youtubePlayer) {
+      youtubePlayer.seekTo(0, true);
+      youtubePlayer.playVideo();
+    } else if (queue.length > 1) {
+      nextSong();
+    } else {
+      set({ isPlaying: false });
+    }
+  },
   toggleShuffle: () => set((state) => {
     const newShuffle = !state.shuffle;
     if (newShuffle) {
@@ -325,33 +331,21 @@ export const useMusicStore = create((set, get) => ({
   toggleRepeat: () => set((state) => { const newRepeat = !state.repeat; if (get().audioElement) get().audioElement.loop = newRepeat; return { repeat: newRepeat }; }),
   
   nextSong: async () => { 
-    const { queue, currentSong, isPlaying } = get();
+    const { queue, currentSong } = get();
     if (!currentSong || queue.length === 0) return;
     
     const currentIndex = queue.findIndex(s => s.id === currentSong.id);
     const nextIndex = (currentIndex + 1) % queue.length;
-    const nextSongObj = queue[nextIndex];
-    
-    if (isPlaying) get()._triggerCrossfade(0.15, 0); // Start fade out
-    
-    set({ currentSong: nextSongObj, isPlaying: true, currentTime: 0 });
-    get().fetchSongMood(nextSongObj);
-    get()._triggerCrossfade(0.3, 1); // Start fade in
+    get().setCurrentSong(queue[nextIndex]);
   },
   
   prevSong: async () => { 
-    const { queue, currentSong, isPlaying } = get();
+    const { queue, currentSong } = get();
     if (!currentSong || queue.length === 0) return;
     
     const currentIndex = queue.findIndex(s => s.id === currentSong.id);
     const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
-    const prevSongObj = queue[prevIndex];
-
-    if (isPlaying) get()._triggerCrossfade(0.15, 0);
-
-    set({ currentSong: prevSongObj, isPlaying: true, currentTime: 0 });
-    get().fetchSongMood(prevSongObj);
-    get()._triggerCrossfade(0.3, 1);
+    get().setCurrentSong(queue[prevIndex]);
   },
   
   playNext: (song) => set((state) => {
@@ -381,7 +375,12 @@ export const useMusicStore = create((set, get) => ({
     return { queue: newQueue };
   }),
 
-  setVolume: (volume) => { set({ volume: volume }); const { audioElement } = get(); if (audioElement) audioElement.volume = volume; },
+  setVolume: (volume) => {
+    const { audioElement, youtubePlayer } = get();
+    if (audioElement) audioElement.volume = volume;
+    youtubePlayer?.setVolume(volume * 100);
+    set({ volume });
+  },
   resetPlayback: () => {
     const { audioElement } = get();
     if (audioElement) {

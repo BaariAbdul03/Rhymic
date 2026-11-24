@@ -27,37 +27,21 @@ Define the two URLs once in your terminal (do not commit these anywhere):
 export SRC="postgresql://postgres.<PROJECT_REF>:<SUPABASE_DB_PASSWORD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres"
 
 # Neon — the POOLED connection string from the Neon dashboard.
-export DST="postgresql://<user>:<password>@ep-xxx-pooler.<region>.aws.neon.tech/neondb?sslmode=require"
+export DST="postgresql://<user>:<password>@ep-xxx.<region>.aws.neon.tech/neondb?sslmode=require"
 ```
 
-> Neon pooled vs direct: the app itself should use the **pooled** URL
-> (pgbouncer). For one-off admin commands either works, but pooled is fine.
+> Use a pooled URL for the web app and a direct URL for migrations and restores.
 
 ---
 
 ## 1. Create the schema in Neon (empty tables)
 
-The app auto-provisions its schema on boot (`db.create_all()` is idempotent).
-Run it once locally against Neon so the tables exist before the data
-restore:
+Run the migration script on the empty Neon branch before starting the app.
 
 ```sh
-cd Rhymic
-pip install -r requirements.txt   # if not already installed
-
-DATABASE_URL="$DST" python - <<'PY'
-from backend import create_app
-from backend.extensions import db
-app = create_app()                # dev config: creates tables, no secret gate
-with app.app_context():
-    db.create_all()
-print("Neon schema created")
-PY
+pip install -r requirements.txt
+DATABASE_URL_UNPOOLED="$DST" python scripts/run_migrations.py
 ```
-
-(Alternative: deploy to Render with the Neon URL first and let the first
-boot create the schema — but do it before real users sign up, or their
-rows will conflict with the restore.)
 
 Sanity check — list what was created:
 
@@ -74,6 +58,7 @@ make the restore fail:
 ```sh
 pg_dump --data-only --no-owner --no-privileges \
   --schema=public \
+  --exclude-table=public.alembic_version \
   --file=supabase_data.sql \
   --dbname="$SRC"
 ```
@@ -85,12 +70,12 @@ Notes:
 
 ## 3. Restore into Neon
 
-The Neon database must be **fresh** (just schema, no rows). If you need to
-re-run the restore later, reset first: `psql "$DST" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
-then repeat Step 1.
+Restore into a fresh migration branch. Keep any existing Neon accounts and
+playlists intact by reconciling email addresses and foreign keys before cutover.
 
 ```sh
 psql --dbname="$DST" \
+  --single-transaction \
   --set=ON_ERROR_STOP=1 \
   --file=supabase_data.sql
 ```
@@ -109,8 +94,8 @@ psql "$DST" -c "select table_name from information_schema.tables where table_sch
 Then spot-check the important ones (adjust names to your schema):
 
 ```sh
-psql "$SRC" -c "SELECT 'users', count(*) FROM users;"
-psql "$DST" -c "SELECT 'users', count(*) FROM users;"
+psql "$SRC" -c 'SELECT count(*) FROM public."user";'
+psql "$DST" -c 'SELECT count(*) FROM public."user";'
 ```
 
 Final test: log in to the app pointed at Neon locally (`DATABASE_URL="$DST"
@@ -121,7 +106,7 @@ before.
 
 1. Render Dashboard → your service → **Environment**
 2. `DATABASE_URL` → paste the **Neon pooled** URL (keep `?sslmode=require`)
-3. **Delete** `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`
+3. Set `DATABASE_URL_UNPOOLED` to the direct URL for the same Neon branch
 4. **Manual Deploy** → after boot, open `https://<your-app>.onrender.com/api/health`
    and confirm `"database": "connected"`
 5. Create one throwaway account and one upload on the live site
@@ -144,7 +129,7 @@ URL exactly as Neon gives it — no scheme editing needed.
 | --- | --- | --- |
 | Supabase Storage avatars | Object storage, not DB rows | Old `profile_pic` URLs die; users re-upload (new uploads are stored in Neon `bytea` automatically) |
 | `stored_file` table contents | New table, never existed in Supabase | Starts empty; the thumbnail cache rebuilds itself as songs are browsed |
-| `auth.users` (Supabase Auth) | App uses its own `users` table with bcrypt | Nothing to do |
+| `auth.users` (Supabase Auth) | App uses its own `public."user"` table with bcrypt | Nothing to do |
 
 ## Rollback
 

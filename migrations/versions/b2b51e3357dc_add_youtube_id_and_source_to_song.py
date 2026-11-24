@@ -64,6 +64,9 @@ def upgrade():
     if 'youtube_id' not in cols:
         op.add_column('song', sa.Column('youtube_id', sa.String(length=50), nullable=True))
 
+    if 'source' not in cols:
+        op.add_column('song', sa.Column('source', sa.String(length=20), nullable=False, server_default='local'))
+
     if ('youtube_id',) not in uniq:
         # Guard against duplicate youtube_id values before enforcing uniqueness.
         dupes = bind.execute(sa.text(
@@ -74,7 +77,8 @@ def upgrade():
             print('[b2b51e3357dc] duplicate youtube_id values found — '
                   'skipping unique constraint creation')
         else:
-            op.create_unique_constraint('uq_song_youtube_id', 'song', ['youtube_id'])
+            with op.batch_alter_table('song') as batch_op:
+                batch_op.create_unique_constraint('uq_song_youtube_id', ['youtube_id'])
 
     with op.batch_alter_table('song', schema=None) as batch_op:
         batch_op.alter_column('src',

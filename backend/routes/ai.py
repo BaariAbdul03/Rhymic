@@ -65,11 +65,26 @@ def _call_groq(prompt, model):
 def _resolve_tracks(tracks):
     from backend.routes.stream import ytmusic, fix_thumbnail
     import concurrent.futures
+    local_tracks = {
+        (song.title.casefold().strip(), (song.artist or '').casefold().strip()): song.to_dict()
+        for song in Song.query.filter_by(source='local')
+    }
+
     def resolve_track(track):
-        query = f"{track.get('title', '')} {track.get('artist', '')}"
+        if not isinstance(track, dict):
+            return None
+        title = str(track.get('title') or '').strip()
+        artist = str(track.get('artist') or '').strip()
+        if not title:
+            return None
+        local = local_tracks.get((title.casefold(), artist.casefold()))
+        if local:
+            return local
+        query = f"{title} {artist}".strip()
         try:
             search_results = ytmusic.search(query, filter="songs", limit=1)
-            if not search_results: return None
+            if not search_results or not search_results[0].get("videoId"):
+                return None
             
             res = search_results[0]
             authors = ", ".join([a['name'] for a in res.get('artists', [])])
@@ -88,20 +103,15 @@ def _resolve_tracks(tracks):
             print(f"YT Resolution Error for {query}: {e}")
             return None
 
-    result_songs = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-        futures = [executor.submit(resolve_track, t) for t in tracks]
-        for future in concurrent.futures.as_completed(futures):
-            data = future.result()
-            if data:
-                result_songs.append(data)
-    return result_songs
+        return [song for song in executor.map(resolve_track, tracks[:8]) if song]
 
 def _local_keyword_search(prompt):
-    all_s = Song.query.all()
-    # Keeping existing random fallback for simplicity and stability if local search breaks.
-    # The frontend actually performs keyword matching itself if backend fails.
-    fallback_songs = random.sample(all_s, min(len(all_s), 10)) if all_s else []
+    all_s = Song.query.filter_by(source='local').all()
+    words = {word for word in prompt.casefold().split() if len(word) > 2}
+    random.shuffle(all_s)
+    all_s.sort(key=lambda song: sum(word in f"{song.title} {song.artist} {song.src}".casefold() for word in words), reverse=True)
+    fallback_songs = all_s[:10]
     return [s.to_dict() for s in fallback_songs]
 
 @ai_bp.route('/recommend', methods=['POST'])

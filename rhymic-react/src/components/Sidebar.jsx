@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { ListMusic, Home, Compass, Radio, Mic2, PlusSquare, Heart, Sparkles, Plus, Globe, Settings as SettingsIcon, ChevronsLeft, ChevronsRight } from 'lucide-react';
 /* eslint-disable-next-line no-unused-vars */
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,9 +26,6 @@ const itemVariants = {
 };
 
 const Sidebar = () => {
-  const logout = useAuthStore((state) => state.logout);
-  const navigate = useNavigate();
-  
   const playlists = useMusicStore((state) => state.playlists);
   const fetchPlaylists = useMusicStore((state) => state.fetchPlaylists);
   const createPlaylist = useMusicStore((state) => state.createPlaylist);
@@ -47,12 +44,6 @@ const Sidebar = () => {
     document.documentElement.setAttribute('data-theme', 'dark');
     if (token) fetchPlaylists();
   }, [token, fetchPlaylists]);
-
-  const handleLogout = () => {
-    closeSidebar();
-    logout();
-    navigate('/login');
-  };
 
   const handleCreatePlaylistClick = () => {
     closeSidebar();

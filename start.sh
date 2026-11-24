@@ -3,20 +3,14 @@ set -Eeuo pipefail
 
 PUBLIC_PORT="${PORT:-10000}"
 RESOLVER_PORT="${RESOLVER_PORT:-3001}"
+export ONLINE_STREAM_PROVIDER="${ONLINE_STREAM_PROVIDER:-embed}"
+WEB_COMMAND=(gunicorn app:app --bind "0.0.0.0:${PUBLIC_PORT}" --workers "${WEB_CONCURRENCY:-1}" --threads 4 --timeout 120)
+
+case "$ONLINE_STREAM_PROVIDER" in
+  embed|disabled|piped) exec "${WEB_COMMAND[@]}" ;;
+esac
 
 export RESOLVER_HOSTPORT="127.0.0.1:${RESOLVER_PORT}"
-HOSTED_DEMO_MODE="${HOSTED_DEMO_MODE:-true}"
-
-if [[ "$HOSTED_DEMO_MODE" == "true" ]]; then
-  # In hosted demo mode, don't force disabled anymore — the Piped fallback
-  # and OAuth flow should still work on cloud platforms.
-  # Only disable if explicitly set by the deploy config.
-  if [[ -z "${ONLINE_STREAM_PROVIDER:-}" ]]; then
-    export ONLINE_STREAM_PROVIDER="piped"
-  fi
-else
-  export ONLINE_STREAM_PROVIDER="${ONLINE_STREAM_PROVIDER:-auto}"
-fi
 
 # ── Start WARP Proxy (background process) ──────────────────────────────────
 # WARP provides a Cloudflare-routed SOCKS5 proxy to bypass YouTube's
@@ -53,4 +47,4 @@ exec "$CONCURRENTLY" \
   --names "resolver,web" \
   --prefix-colors "cyan,green" \
   "cd backend/resolver && PORT=${RESOLVER_PORT} node server.js" \
-  "gunicorn app:app --bind 0.0.0.0:${PUBLIC_PORT} --workers ${WEB_CONCURRENCY:-1} --timeout 120"
+  "${WEB_COMMAND[*]}"

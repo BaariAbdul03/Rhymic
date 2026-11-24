@@ -11,9 +11,7 @@ const HostedDemoNotice = ({ compact = false }) => (
     <div className={styles.content}>
       <strong>Online Streaming Status</strong>
       <p>
-        YouTube Music streaming is currently unavailable in this online deployment (due to server IP rate limits).
-        Please try the <strong>preloaded offline songs</strong> (such as <em>Alone</em>, <em>Darkside</em>, and more) in the premade playlists: 
-        <strong> English</strong>, <strong>Modern</strong>, <strong>Rap</strong>, <strong>Retro Classics</strong>, and <strong>Romantic</strong> to experience the Web Audio engine, 10-band EQ, and Visualizer, or upload your own files.
+        Online discovery is currently unavailable. Play bundled tracks like <em>Alone</em> and <em>Darkside</em> from your library, or upload your own audio files.
       </p>
     </div>
     <Link className={styles.action} to="/upload">

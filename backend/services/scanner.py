@@ -9,11 +9,7 @@ def scan_library(app):
     Scans the music directory and populates the database with songs and system playlists.
     Optimized for batch operations to prevent N+1 queries and slow startup times.
     """
-    DIST_DIR = os.path.abspath(os.path.join(app.root_path, '..', 'rhymic-react', 'dist'))
-    if os.path.exists(DIST_DIR):
-        ASSETS_DIR = os.path.join(DIST_DIR, 'assets')
-    else:
-        ASSETS_DIR = os.path.abspath(os.path.join(app.root_path, '..', 'rhymic-react', 'public', 'assets'))
+    ASSETS_DIR = app.config['ASSETS_DIR']
 
     music_dir = os.path.join(ASSETS_DIR, 'music')
     if not os.path.exists(music_dir):

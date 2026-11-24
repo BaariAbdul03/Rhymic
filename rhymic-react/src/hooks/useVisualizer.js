@@ -45,7 +45,6 @@ export const useVisualizer = (canvasRef, mode, isVisualizerOpen) => {
       ctx.fillStyle = 'rgba(10, 10, 10, 0.2)';
       ctx.fillRect(0, 0, width, height);
 
-      const centerY = height / 2;
       const colors = getMoodColors(currentMood);
       
       const layers = [

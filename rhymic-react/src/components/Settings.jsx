@@ -12,7 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import styles from './Settings.module.css';
 
@@ -91,7 +91,7 @@ const Settings = () => {
   if (!user) return null;
 
   return (
-    <motion.div 
+    <Motion.div
       className={styles.container}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -182,7 +182,7 @@ const Settings = () => {
 
         <AnimatePresence>
           {showPasswordForm && (
-            <motion.form 
+            <Motion.form
               className={styles.setupCard}
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
@@ -223,7 +223,7 @@ const Settings = () => {
                   {securityLoading ? 'Updating...' : 'Update Password'}
                 </button>
               </div>
-            </motion.form>
+            </Motion.form>
           )}
         </AnimatePresence>
 
@@ -251,7 +251,7 @@ const Settings = () => {
         {/* 2FA Setup Flow */}
         <AnimatePresence>
           {setupData && (
-            <motion.div 
+            <Motion.div
               className={styles.setupCard}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -289,12 +289,12 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
-            </motion.div>
+            </Motion.div>
           )}
         </AnimatePresence>
       </section>
 
-    </motion.div>
+    </Motion.div>
   );
 };
 

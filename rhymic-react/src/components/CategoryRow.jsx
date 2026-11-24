@@ -1,8 +1,7 @@
 import React, { useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { useMusicStore } from '../store/musicStore';
-import toast from 'react-hot-toast';
 import SongCover from './SongCover';
 import styles from './CategoryRow.module.css';
 
@@ -99,7 +98,7 @@ const CategoryRow = ({ playlist, songs: rowOverride }) => {
       </div>
 
       <div className={styles.scrollWrapper}>
-        <motion.div 
+        <Motion.div
           className={styles.scrollContainer} 
           ref={scrollRef}
           variants={containerVariants}
@@ -108,7 +107,7 @@ const CategoryRow = ({ playlist, songs: rowOverride }) => {
           viewport={{ once: true, amount: 0.1 }}
         >
           {rowSongs.map((song) => (
-            <motion.div 
+            <Motion.div
               variants={cardVariants}
               key={song.id} 
               className={styles.card} 
@@ -131,9 +130,9 @@ const CategoryRow = ({ playlist, songs: rowOverride }) => {
                 <p className={styles.songArtist}>{song.artist}</p>
                 {song.source === 'online' && <span className={styles.sourceBadge}>Online</span>}
               </div>
-            </motion.div>
+            </Motion.div>
           ))}
-        </motion.div>
+        </Motion.div>
       </div>
     </div>
   );

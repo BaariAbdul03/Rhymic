@@ -8,7 +8,7 @@ import qrcode
 import base64
 from io import BytesIO
 from sqlalchemy.exc import IntegrityError
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 from backend.services.email_service import send_recovery_email
 import re
 from backend.extensions import db, bcrypt, limiter
@@ -99,19 +99,20 @@ def signup():
 @limiter.limit("5 per minute; 20 per hour")
 def login():
     data = request.get_json()
-    
-    if not data or 'email' not in data or 'password' not in data:
+    email = data.get('email') if isinstance(data, dict) else None
+    password = data.get('password') if isinstance(data, dict) else None
+    if not isinstance(email, str) or not isinstance(password, str) or not email.strip() or not password:
         return jsonify({"message": "Missing email or password"}), 400
         
     for key, val in data.items():
         if isinstance(val, str) and len(val) > 255:
             return jsonify({"message": f"Field '{key}' exceeds 255 characters"}), 400
             
-    user = User.query.filter_by(email=data['email']).first()
-    if user and bcrypt.check_password_hash(user.password, data['password']):
+    user = User.query.filter_by(email=email.strip()).first()
+    if user and len(password.encode('utf-8')) <= 72 and bcrypt.check_password_hash(user.password, password):
         remember = data.get('rememberMe', False)
         if user.is_two_factor_enabled:
-            temp_token = create_access_token(identity=str(user.id), expires_delta=timedelta(minutes=5), additional_claims={"type": "temp_2fa"})
+            temp_token = create_refresh_token(identity=str(user.id), expires_delta=timedelta(minutes=5), additional_claims={"purpose": "2fa"})
             return jsonify({"2fa_required": True, "temp_token": temp_token}), 200
             
         expires = timedelta(days=30) if remember else timedelta(hours=24)
@@ -175,10 +176,11 @@ def reset_password():
     return jsonify({"message": "Password has been successfully reset"}), 200
 
 @auth_bp.route('/2fa/verify', methods=['POST'])
-@jwt_required()
+@jwt_required(refresh=True)
+@limiter.limit("5 per minute; 20 per hour")
 def verify_2fa():
     claims = get_jwt()
-    if claims.get("type") != "temp_2fa":
+    if claims.get("purpose") != "2fa":
         return jsonify({"message": "Invalid token type for 2FA verification"}), 401
         
     data = request.get_json()

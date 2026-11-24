@@ -2,7 +2,7 @@ services:
   - type: web
     name: rhymic
     env: python
-    buildCommand: ./build.sh
+    buildCommand: bash build.sh
     startCommand: bash start.sh
     healthCheckPath: /api/health
 
@@ -17,19 +17,10 @@ services:
         value: production
 
       # ── Online Streaming Configuration ────────────────────────────────
-      # YouTube blocks datacenter IPs. Three layers of bypass are available:
-      #
-      #   Layer 1: Piped instances (works out of the box, no setup needed)
-      #   Layer 2: YT_OAUTH_CREDENTIALS (OAuth TV device flow, highly reliable)
-      #   Layer 3: WARP sidecar proxy (routes yt-dlp through Cloudflare IPs)
-      #
-      # Available streaming modes:
-      #   extractor  — tries all: resolver -> Piped -> yt-dlp (recommended)
-      #   auto       — resolver -> Piped -> yt-dlp (same as extractor)
-      #   piped      — Piped instances only (works on Render without setup)
-      #   disabled   — hide online streaming entirely
+      # The browser plays YouTube embeds. The resolver settings below
+      # apply only to explicitly enabled legacy audio endpoints.
       - key: ONLINE_STREAM_PROVIDER
-        value: extractor
+        value: embed
 
       # ═════════════════════════════════════════════════════════════════╗
       # ║  LAYER 1 — Piped Instance Override                           ║
@@ -112,6 +103,9 @@ services:
         generateValue: true
 
       - key: DATABASE_URL
+        sync: false
+
+      - key: DATABASE_URL_UNPOOLED
         sync: false
 
       - key: GROQ_API_KEY

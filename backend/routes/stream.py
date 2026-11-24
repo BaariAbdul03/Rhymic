@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, Response
+from flask import Blueprint, jsonify, request, Response, current_app
 from flask_jwt_extended import jwt_required
 from ytmusicapi import YTMusic
 import os
@@ -407,16 +407,13 @@ def proxy_thumbnail():
                 except Exception as e:
                     print(f"[Thumbnail] Fallback fetch failed: {e}")
 
-            # Try Supabase cloud cache as last resort
+            # Try Neon DB persistent cache as last resort
             if not content:
                 try:
-                    from backend.services.storage_service import get_cached_thumbnail_url
-                    cloud_url = get_cached_thumbnail_url(file_hash)
-                    if cloud_url:
-                        c_resp = py_requests.get(cloud_url, timeout=5)
-                        if c_resp.status_code == 200 and len(c_resp.content) > 100:
-                            content = c_resp.content
-                            mime = c_resp.headers.get('Content-Type', 'image/jpeg')
+                    from backend.services.storage_service import load_file
+                    stored = load_file(file_hash)
+                    if stored:
+                        content, mime = stored
                 except Exception:
                     pass
 
@@ -430,10 +427,18 @@ def proxy_thumbnail():
                 # Fill memory cache
                 _memory_cache[file_hash] = {'content': content, 'mime': mime}
 
-                # Background upload to Supabase (fire and forget)
+                # Background persist to Neon DB cache (fire and forget)
                 try:
                     from backend.services.storage_service import upload_thumbnail
-                    threading.Thread(target=upload_thumbnail, args=(content, file_hash, mime), daemon=True).start()
+                    flask_app = current_app._get_current_object()
+                    def _persist_thumbnail():
+                        with flask_app.app_context():
+                            try:
+                                upload_thumbnail(content, file_hash, mime)
+                            finally:
+                                from backend.extensions import db
+                                db.session.remove()
+                    threading.Thread(target=_persist_thumbnail, daemon=True).start()
                 except Exception:
                     pass
 

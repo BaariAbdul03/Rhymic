@@ -16,7 +16,10 @@ echo "Building React frontend..."
 npm run build --prefix rhymic-react
 
 echo "Running database migrations..."
-flask db upgrade
+# Drift-aware runner: stamps databases whose schema already exists without
+# an alembic_version row (create_all / restored dumps) instead of failing
+# with DuplicateColumn errors. See scripts/run_migrations.py.
+python scripts/run_migrations.py
 
 echo "Build complete."
 

@@ -11,7 +11,9 @@
   border-right: 1px solid var(--glass-border);
   box-shadow: 1px 0 10px rgba(0, 0, 0, 0.1);
   z-index: 200;
-  transition: all 0.3s var(--transition-spring);
+  /* No width transition: animating a layout property meant the rail could
+     stall mid-collapse and look hidden. The drawer slide is animated below. */
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .logoHeader {
@@ -161,7 +163,15 @@
   text-overflow: ellipsis;
 }
 
+/* Icon-only mode belongs to the docked desktop sidebar. Inside the mobile
+   drawer it used to strip every label and leave a near-empty strip, so the
+   compact rules only apply where the sidebar is docked. */
+@media (min-width: 1025px) {
 .sidebar.compact {
+  /* Set the width here too: inheriting it only through --sidebar-width left
+     the docked sidebar one toggle behind, so compact mode looked like it had
+     done nothing (or hid the rail entirely). */
+  width: 76px;
   padding-top: 20px;
 }
 
@@ -206,6 +216,7 @@
 
 .sidebar.compact .createButton {
   margin-top: 2px;
+}
 }
 
 .playlistScroll {
@@ -270,6 +281,12 @@
   .createButton {
     width: 36px;
     height: 36px;
+  }
+
+  /* The drawer is either open (full labels) or closed; collapsing it to icons
+     on a phone leaves nothing usable. */
+  .compactToggle {
+    display: none;
   }
 }
 

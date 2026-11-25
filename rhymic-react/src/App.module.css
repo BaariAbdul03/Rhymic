@@ -82,7 +82,9 @@
   transform: translateZ(0); /* Force hardware accel for z-index */
 }
 
-@media (max-width: 768px) {
+/* Phones, including the short landscape ones where the width alone would
+   look like a tablet: those still want the phone shell and mini player. */
+@media (max-width: 768px), (max-height: 500px) and (max-width: 1024px) {
   .appContainer {
     flex-direction: column;
   }

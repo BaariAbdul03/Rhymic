@@ -107,6 +107,15 @@
   color: var(--text-muted);
 }
 
+/* The wrapper already draws the focus ring; the global
+   `input:focus-visible` outline used to paint a second one inside it. */
+.searchInput:focus,
+.searchInput:focus-visible {
+  outline: none;
+  outline-offset: 0;
+  box-shadow: none;
+}
+
 .rightSection {
   display: flex;
   align-items: center;

@@ -87,15 +87,17 @@
     flex-direction: column;
   }
   .mainWrapper {
-    /* The flex container is a column here, so flex-grow would stretch this
-       past the player bar and hide the last rows behind it. */
-    flex: 0 0 auto;
-    height: calc(100vh - 70px);
-    height: calc(100dvh - 70px - env(safe-area-inset-bottom, 0px));
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 0;
   }
+  /* No persistent control bar on phones — only the mini player that appears
+     while a song is selected (see MobileMiniPlayer). */
   .bottomPlayer {
-    height: calc(70px + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    display: none;
+  }
+  .hasMiniPlayer .scrollableContent {
+    padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
   }
   .rightPanelArea {
     display: none;

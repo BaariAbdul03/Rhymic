@@ -27,6 +27,7 @@ import { useAuthStore } from './store/authStore';
 import { useUIStore } from './store/uiStore';
 import YouTubePlayer from './components/YouTubePlayer';
 import MobilePlayer from './components/MobilePlayer';
+import MobileMiniPlayer from './components/MobileMiniPlayer';
 import Visualizer from './components/Visualizer';
 import AudioLab from './components/AudioLab';
 
@@ -108,7 +109,7 @@ const AppContent = () => {
   const showRightPanel = (currentSong || queue.length > 0) && isRightPanelOpen;
 
   return (
-    <div className={`${styles.appContainer} ${isSidebarCompact ? styles.compactSidebar : ''} ${!showRightPanel ? styles.hideRightPanel : ''}`}>
+    <div className={`${styles.appContainer} ${isSidebarCompact ? styles.compactSidebar : ''} ${!showRightPanel ? styles.hideRightPanel : ''} ${currentSong ? styles.hasMiniPlayer : ''}`}>
       <Sidebar />
       
       <main className={styles.mainWrapper}>
@@ -140,6 +141,8 @@ const AppContent = () => {
       <div className={styles.bottomPlayer}>
         <ProgressBar />
       </div>
+      {/* Phones use this instead of the desktop control bar. */}
+      <MobileMiniPlayer />
       <YouTubePlayer />
 
       <MoodOrb />

@@ -196,6 +196,14 @@
   transform: translateY(0);
 }
 
+/* Touch screens have no hover — keep the play affordance visible. */
+@media (hover: none) {
+  .railPlay {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .railTitle,
 .railArtist {
   overflow: hidden;

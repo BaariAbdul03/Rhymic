@@ -3,7 +3,7 @@ import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Activity, BarChart2, CircleDashed, Sparkles, Play, Pause, SkipBack, SkipForward } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
-import { useMusicStore } from '../store/musicStore';
+import { useMusicStore, isEmbedPlayback } from '../store/musicStore';
 import { useVisualizer } from '../hooks/useVisualizer';
 import SongCover from './SongCover';
 import styles from './Visualizer.module.css';
@@ -24,30 +24,39 @@ const Visualizer = () => {
   const currentTime = useMusicStore((state) => state.currentTime);
   const duration = useMusicStore((state) => state.duration);
   const seek = useMusicStore((state) => state.seek);
+  const effectsBypassed = useMusicStore((state) => isEmbedPlayback(state, state.currentSong));
 
   useVisualizer(canvasRef, visualizerMode, isVisualizerOpen);
 
   useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!isVisualizerOpen || !canvas) return undefined;
+
+    // Size the buffer from the element itself (CSS keeps it at 100% of the
+    // overlay), so mobile browser chrome and rotation never overflow.
     const handleResize = () => {
-      if (canvasRef.current) {
-        // scale canvas internal buffer
-        const dpr = window.devicePixelRatio || 1;
-        const canvas = canvasRef.current;
-        canvas.width = window.innerWidth * dpr;
-        canvas.height = window.innerHeight * dpr;
-        canvas.style.width = `${window.innerWidth}px`;
-        canvas.style.height = `${window.innerHeight}px`;
-        const ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
-      }
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const width = Math.round(rect.width) || window.innerWidth;
+      const height = Math.round(rect.height) || window.innerHeight;
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
     };
 
-    if (isVisualizerOpen) {
-      handleResize();
-      window.addEventListener('resize', handleResize);
-    }
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(handleResize) : null;
+    observer?.observe(canvas);
 
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+      observer?.disconnect();
+    };
   }, [isVisualizerOpen]);
 
   const formatTime = (time) => {
@@ -113,6 +122,12 @@ const Visualizer = () => {
               </button>
             </div>
           </div>
+
+          {effectsBypassed && (
+            <p className={styles.engineNotice} role="status">
+              This track plays through YouTube, so there is no live audio signal to visualize.
+            </p>
+          )}
 
           {/* Minimal Bottom Player matching Visualizer design */}
           <div className={styles.bottomPlayer}>

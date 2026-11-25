@@ -2,8 +2,9 @@
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
+  width: 100%;
   height: 100vh;
+  height: 100dvh;
   z-index: 15500;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(8px);
@@ -66,6 +67,17 @@
   transform: rotate(90deg);
   border-color: var(--accent-primary);
   color: var(--accent-primary);
+}
+
+.engineNotice {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(200, 164, 78, 0.28);
+  background: rgba(200, 164, 78, 0.08);
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.5;
 }
 
 .eqSection {
@@ -201,8 +213,32 @@
     max-width: 100%;
     border-radius: 0;
     border: none;
-    padding: 24px;
+    padding: 18px 16px calc(24px + env(safe-area-inset-bottom, 0px));
     overflow-y: auto;
+    overscroll-behavior: contain;
+    gap: 24px;
+  }
+
+  .header {
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .headerLeft {
+    gap: 8px;
+  }
+
+  .title {
+    font-size: 1.1rem;
+  }
+
+  .closeBtn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .engineNotice {
+    font-size: 0.82rem;
   }
   
   .effectsSection {

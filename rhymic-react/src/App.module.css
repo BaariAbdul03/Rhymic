@@ -2,7 +2,8 @@
   display: flex;
   flex-direction: row;
   height: 100vh;
-  width: 100vw;
+  height: 100dvh;
+  width: 100%;
   background:
     linear-gradient(135deg, rgba(14, 16, 18, 0.96) 0%, rgba(10, 11, 12, 1) 52%, rgba(16, 15, 12, 0.98) 100%),
     var(--bg-primary);
@@ -19,7 +20,8 @@
   align-items: center;
   justify-content: center;
   height: 100vh;
-  width: 100vw;
+  height: 100dvh;
+  width: 100%;
   background-color: var(--bg-primary);
   overflow: hidden;
 }
@@ -29,6 +31,7 @@
   flex-direction: column;
   flex: 1;
   height: calc(100vh - 90px); /* Reserve space for bottom player */
+  height: calc(100dvh - 90px);
   overflow: hidden;
 }
 
@@ -84,10 +87,15 @@
     flex-direction: column;
   }
   .mainWrapper {
+    /* The flex container is a column here, so flex-grow would stretch this
+       past the player bar and hide the last rows behind it. */
+    flex: 0 0 auto;
     height: calc(100vh - 70px);
+    height: calc(100dvh - 70px - env(safe-area-inset-bottom, 0px));
   }
   .bottomPlayer {
-    height: 70px;
+    height: calc(70px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .rightPanelArea {
     display: none;
@@ -112,9 +120,17 @@
   z-index: 10000;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
   pointer-events: auto;
+  width: calc(100% - 24px);
   max-width: 600px;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+@media (max-height: 560px) {
+  .errorToast {
+    bottom: 84px;
+    padding: 10px 14px;
+  }
 }
 
 .errorIcon {

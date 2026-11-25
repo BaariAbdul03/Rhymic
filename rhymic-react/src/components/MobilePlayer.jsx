@@ -155,11 +155,6 @@ const MobilePlayer = () => {
               className={styles.perspectiveWrapper}
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
-              onTouchMove={(e) => {
-                 const touch = e.touches[0];
-                 handleMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
-              }}
-              onTouchEnd={handleMouseLeave}
               animate={{ rotateX: tilt.x, rotateY: tilt.y }}
               transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >

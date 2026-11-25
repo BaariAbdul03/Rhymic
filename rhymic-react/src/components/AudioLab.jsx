@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, SlidersHorizontal, Settings2, Speaker } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
-import { useMusicStore } from '../store/musicStore';
+import { useMusicStore, isEmbedPlayback } from '../store/musicStore';
 import styles from './AudioLab.module.css';
 
 const LABELS = ['32', '64', '125', '250', '500', '1K', '2K', '4K', '8K', '16K'];
@@ -24,6 +24,8 @@ const AudioLab = () => {
   const setEqBand = useMusicStore((state) => state.setEqBand);
   const bassBoost = useMusicStore((state) => state.bassBoost);
   const setBassBoost = useMusicStore((state) => state.setBassBoost);
+  const currentSong = useMusicStore((state) => state.currentSong);
+  const effectsBypassed = useMusicStore((state) => isEmbedPlayback(state, state.currentSong));
 
   // FIX C-1: Controlled select — tracks the active preset name so the dropdown
   // stays in sync with actual EQ state. Reset to 'Custom' when a band is moved
@@ -65,7 +67,7 @@ const AudioLab = () => {
                 <SlidersHorizontal size={28} color="var(--accent-primary)" />
                 <h2 className={styles.title}>Audio Lab</h2>
               </div>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                 <select 
                   value={activePreset}
                   onChange={(e) => applyPreset(e.target.value)}
@@ -88,6 +90,13 @@ const AudioLab = () => {
                 </button>
               </div>
             </div>
+
+            {effectsBypassed && currentSong && (
+              <p className={styles.engineNotice} role="status">
+                This track is playing through the YouTube player, so the EQ, bass boost and visualizer
+                cannot affect its sound. Tracks that stream through RhyMic get the full effects.
+              </p>
+            )}
 
             {/* EQ Section */}
             <div className={styles.eqSection}>

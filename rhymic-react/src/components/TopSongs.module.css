@@ -88,6 +88,12 @@
   opacity: 1;
 }
 
+@media (hover: none) {
+  .colAction {
+    opacity: 1;
+  }
+}
+
 /* Animated Equalizer */
 .equalizer {
   display: flex;

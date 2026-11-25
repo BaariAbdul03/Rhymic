@@ -278,12 +278,28 @@
   gap: 8px;
 }
 
+/* Touch devices never hover, so the thumb must always be visible. */
+@media (hover: none) {
+  .slider::-webkit-slider-thumb {
+    opacity: 1;
+  }
+}
+
 /* Mobile responsive */
 @media (max-width: 768px) {
+  .playerContainer {
+    padding: 0 12px;
+    gap: 8px;
+  }
   .songInfo {
     width: auto;
     min-width: 0;
     flex: 1;
+    gap: 10px;
+  }
+  .coverWrapper {
+    width: 44px;
+    height: 44px;
   }
   .songDetails {
     display: none; 
@@ -297,5 +313,23 @@
   .playerCentro {
     max-width: none;
     flex: 0 0 auto;
+  }
+  .controls {
+    gap: 6px;
+  }
+  .controlBtn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .playPauseBtn {
+    width: 44px;
+    height: 44px;
+  }
+  .likeBtn {
+    margin-left: 0;
+  }
+  /* Shuffle and favorites live in the full-screen player on phones. */
+  .mobileHidden {
+    display: none;
   }
 }

@@ -90,6 +90,11 @@ function EmbeddedPlayer({ song }) {
             playerRef.current = target;
             store().setYouTubePlayer(target);
             target.setVolume(store().volume * 100);
+            const resumeAt = store().embedResumeAt;
+            if (resumeAt > 1) {
+              target.seekTo(resumeAt, true);
+              store().clearEmbedResumeAt();
+            }
             if (store().isPlaying) target.playVideo();
           },
           onStateChange: ({ data }) => {
@@ -137,6 +142,8 @@ function EmbeddedPlayer({ song }) {
       player?.destroy();
       host.replaceChildren();
     };
+    // The resume position is read once on ready, not a dependency: clearing it
+    // must not tear down a freshly started player.
   }, [videoId, watchUrl]);
 
   useEffect(() => {
@@ -162,5 +169,11 @@ function EmbeddedPlayer({ song }) {
 
 export default function YouTubePlayer() {
   const song = useMusicStore(state => state.currentSong);
-  return song?.source === 'online' ? <EmbeddedPlayer key={song.id} song={song} /> : null;
+  const mode = useMusicStore(state => state.onlinePlayback);
+  const blockedIds = useMusicStore(state => state.blockedOnlineIds);
+  // Only mount the iframe when this track is not playing through the <audio>
+  // element, so the two can never produce audio at the same time.
+  const usesEmbed = song?.source === 'online'
+    && (mode === 'embed' || blockedIds.includes(song.id));
+  return usesEmbed ? <EmbeddedPlayer key={song.id} song={song} /> : null;
 }

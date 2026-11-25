@@ -18,6 +18,7 @@ const Topbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const searchRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   
   const user = useAuthStore((state) => state.user);
   const toggleSidebar = useUIStore((state) => state.toggleSidebar);
@@ -141,7 +142,7 @@ const Topbar = () => {
         </div>
       </div>
 
-      <div className={styles.searchContainer} ref={searchRef}>
+      <div className={`${styles.searchContainer} ${mobileSearchOpen ? styles.searchOpen : ''}`} ref={searchRef}>
         <div className={styles.searchWrapper}>
           <Search className={styles.searchIcon} size={18} />
           <input 
@@ -235,6 +236,15 @@ const Topbar = () => {
       </div>
 
       <div className={styles.rightSection}>
+        <button
+          type="button"
+          className={styles.mobileSearchBtn}
+          onClick={() => setMobileSearchOpen((open) => !open)}
+          aria-label={mobileSearchOpen ? 'Close search' : 'Search'}
+          aria-expanded={mobileSearchOpen}
+        >
+          <Search size={20} />
+        </button>
         {user ? (
           <div className={styles.userProfile} onClick={() => navigate('/profile')}>
             <div className={styles.avatarWrapper}>

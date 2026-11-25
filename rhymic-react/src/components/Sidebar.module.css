@@ -238,24 +238,38 @@
 @media (max-width: 1024px) {
   .sidebar {
     position: fixed;
-    left: -280px;
+    left: -300px;
     top: 0;
     height: 100vh;
-    width: 280px;
+    height: 100dvh;
+    width: min(280px, 86vw);
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
     transition: left 0.4s var(--transition-spring);
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.5);
+    z-index: 1200;
+    overflow-y: auto;
   }
 
   .sidebar.mobileOpen {
     left: 0;
   }
 
+  /* Above the mini player, which otherwise floats over the dimmed drawer. */
   .overlay.visible {
     display: block;
     position: fixed;
     inset: 0;
     background-color: var(--overlay-bg);
-    z-index: 100;
+    z-index: 1150;
+  }
+
+  .menuItem {
+    min-height: 44px;
+  }
+
+  .createButton {
+    width: 36px;
+    height: 36px;
   }
 }
 

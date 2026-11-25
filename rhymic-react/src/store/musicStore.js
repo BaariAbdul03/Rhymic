@@ -3,6 +3,19 @@ import { useAuthStore } from './authStore';
 import { songsApi, playlistsApi, likesApi, moodApi } from '../services/api';
 import { preloadImages } from '../utils/preloadImages';
 
+// An online track only flows through the <audio> element (and therefore the
+// Web Audio EQ/analyser graph) while engine playback is available for it.
+// Otherwise the hidden YouTube iframe plays it.
+export const isEmbedPlayback = (state, song = state.currentSong) => {
+  if (!song || song.source !== 'online') return false;
+  return state.onlinePlayback === 'embed' || state.blockedOnlineIds.includes(song.id);
+};
+
+export const playsInElement = (state, song = state.currentSong) => {
+  if (!song?.src) return false;
+  return !isEmbedPlayback(state, song);
+};
+
 export const useMusicStore = create((set, get) => ({
   songs: [],
   currentSong: null,
@@ -22,6 +35,15 @@ export const useMusicStore = create((set, get) => ({
   streamFallbackUrl: null,
   youtubePlayer: null,
 
+  // --- Online playback routing ---
+  // 'engine' = same-origin proxy through <audio> (real EQ + visualizer)
+  // 'embed'  = hidden YouTube iframe (no Web Audio access)
+  onlinePlayback: 'engine',
+  engineFailures: 0,
+  blockedOnlineIds: [],
+  onlineEngineChecked: false,
+  embedResumeAt: 0,
+
   // --- Audio Engine / Lab ---
   audioContext: null,
   analyserNode: null,
@@ -30,6 +52,31 @@ export const useMusicStore = create((set, get) => ({
   bassBoost: 0,
   
   setAudioContextNode: (context, analyser, crossfade) => set({ audioContext: context, analyserNode: analyser, crossfadeNode: crossfade }),
+
+  setOnlineEngineAvailable: (available) => set({
+    onlineEngineChecked: true,
+    onlinePlayback: available ? get().onlinePlayback : 'embed',
+  }),
+
+  // Called when an online track cannot be played through the proxy <audio>
+  // element. The current track switches to the hidden iframe immediately;
+  // the whole session switches after a second failure.
+  registerEngineFailure: (song, atSeconds = 0) => set((state) => {
+    if (!song || song.source !== 'online') return {};
+    if (state.blockedOnlineIds.includes(song.id)) return {};
+    const engineFailures = state.engineFailures + 1;
+    const isCurrent = state.currentSong?.id === song.id;
+    return {
+      blockedOnlineIds: [...state.blockedOnlineIds, song.id],
+      engineFailures,
+      onlinePlayback: engineFailures >= 2 ? 'embed' : state.onlinePlayback,
+      embedResumeAt: isCurrent && Number.isFinite(atSeconds) ? atSeconds : state.embedResumeAt,
+      error: null,
+      streamFallbackUrl: null,
+    };
+  }),
+
+  clearEmbedResumeAt: () => set({ embedResumeAt: 0 }),
   setEqBand: (index, value) => set((state) => {
     const newBands = [...state.eqBands];
     newBands[index] = value;
@@ -257,10 +304,10 @@ export const useMusicStore = create((set, get) => ({
     if (song && song === currentSong) {
       get().seek(0);
     }
-    if (song?.source !== 'online' && audioContext && audioContext.state !== 'running') {
+    if (playsInElement(get(), song) && audioContext && audioContext.state !== 'running') {
       audioContext.resume().catch(() => {});
     }
-    if (currentSong?.source !== 'online' && song?.source === 'online') audioElement?.pause();
+    if (song && !playsInElement(get(), song)) audioElement?.pause();
     // Start fading out old song (non-blocking)
     if (isPlaying) get()._triggerCrossfade(0.15, 0);
     
@@ -269,6 +316,7 @@ export const useMusicStore = create((set, get) => ({
       currentSong: song,
       isPlaying: Boolean(song),
       currentTime: 0,
+      embedResumeAt: 0,
       duration: song === currentSong ? state.duration : 0,
       error: null,
       streamFallbackUrl: null,
@@ -285,7 +333,7 @@ export const useMusicStore = create((set, get) => ({
   togglePlay: () => {
     const { isPlaying, currentSong, audioContext } = get();
     if (!currentSong) return;
-    if (currentSong.source === 'online') {
+    if (!playsInElement(get())) {
       set({ isPlaying: !isPlaying });
       return;
     }
@@ -306,15 +354,26 @@ export const useMusicStore = create((set, get) => ({
   setDuration: (time) => set({ duration: time }),
   seek: (time) => {
     const { audioElement, currentSong, youtubePlayer } = get();
-    if (currentSong?.source === 'online') youtubePlayer?.seekTo(time, true);
-    else if (audioElement) audioElement.currentTime = time;
+    if (playsInElement(get())) {
+      if (audioElement) audioElement.currentTime = time;
+    } else if (currentSong?.source === 'online') {
+      youtubePlayer?.seekTo(time, true);
+    } else if (audioElement) {
+      audioElement.currentTime = time;
+    }
     set({ currentTime: time });
   },
   finishTrack: () => {
-    const { repeat, youtubePlayer, queue, nextSong } = get();
-    if (repeat && youtubePlayer) {
-      youtubePlayer.seekTo(0, true);
-      youtubePlayer.playVideo();
+    const state = get();
+    const { repeat, youtubePlayer, queue, nextSong, audioElement } = state;
+    if (repeat) {
+      if (playsInElement(state) && audioElement) {
+        audioElement.currentTime = 0;
+        audioElement.play().catch(() => {});
+      } else if (youtubePlayer) {
+        youtubePlayer.seekTo(0, true);
+        youtubePlayer.playVideo();
+      }
     } else if (queue.length > 1) {
       nextSong();
     } else {

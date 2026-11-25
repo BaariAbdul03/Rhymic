@@ -269,6 +269,12 @@
   opacity: 1; /* Show on hover */
 }
 
+@media (hover: none) {
+  .likeButton {
+    opacity: 1;
+  }
+}
+
 .likeButton.likeActive {
   color: var(--accent-primary);
   opacity: 1;
@@ -409,6 +415,12 @@
 
 .songItem:hover .likeButton {
   opacity: 1; /* Show on hover */
+}
+
+@media (hover: none) {
+  .likeButton {
+    opacity: 1;
+  }
 }
 
 .likeButton.likeActive {

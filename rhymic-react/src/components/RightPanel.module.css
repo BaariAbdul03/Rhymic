@@ -10,6 +10,8 @@
 .desktopOverlay {
   position: fixed;
   top: 0; right: 0; bottom: 0;
+  height: 100vh;
+  height: 100dvh;
   min-width: 300px;
   max-width: 600px;
   z-index: 15000;
@@ -193,18 +195,30 @@
   .rightPanel {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%;
+    max-width: none;
     /* Do NOT use width: 100vw — on mobile browsers 100vw includes scrollbar/system UI
        and becomes wider than the visible viewport, pushing content off-screen.
        left:0 + right:0 already makes it span the full viewport correctly. */
     height: 100vh;
+    height: 100dvh;
     z-index: 15000;
     background: rgba(18, 18, 18, 0.98);
     backdrop-filter: blur(40px);
     -webkit-backdrop-filter: blur(40px);
     border-left: none;
-    padding: 24px 20px 80px 20px;
+    padding: 20px 16px calc(24px + env(safe-area-inset-bottom, 0px));
     overflow: hidden; /* Hard clip boundary — nothing escapes the panel */
     box-sizing: border-box;
+  }
+
+  .drawerHeader {
+    margin-bottom: 16px;
+  }
+
+  .iconBtn {
+    width: 44px;
+    height: 44px;
   }
 
   /* Reset the desktop scrollbar-offset trick which clips content on mobile */

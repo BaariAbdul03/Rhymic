@@ -4,9 +4,14 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useMusicStore } from '../store/musicStore';
 import { useUIStore } from '../store/uiStore';
 import SongCover from './SongCover';
+import { useMediaQuery } from '../hooks/useMediaQuery';
 import styles from './RightPanel.module.css';
 
 const RightPanel = ({ isOverlay }) => {
+  // Below 1201px the panel is a full-screen sheet (see the media query in the
+  // stylesheet); the pixel width and resize handle only apply on wide screens.
+  const isWide = useMediaQuery('(min-width: 1201px)');
+  const asOverlay = Boolean(isOverlay) && isWide;
   const queue = useMusicStore((state) => state.queue);
   const currentSong = useMusicStore((state) => state.currentSong);
   const setCurrentSong = useMusicStore((state) => state.setCurrentSong);
@@ -64,10 +69,10 @@ const RightPanel = ({ isOverlay }) => {
 
   return (
     <aside 
-      className={`${styles.rightPanel} ${isOverlay ? styles.desktopOverlay : ''}`}
-      style={{ width: isOverlay || window.innerWidth >= 1024 ? `${panelWidth}px` : 'auto' }}
+      className={`${styles.rightPanel} ${asOverlay ? styles.desktopOverlay : ''}`}
+      style={isWide ? { width: `${panelWidth}px` } : undefined}
     >
-      {(isOverlay || window.innerWidth >= 1024) && (
+      {isWide && (
         <div 
           className={styles.resizeHandle} 
           onMouseDown={startResizing}
@@ -78,7 +83,7 @@ const RightPanel = ({ isOverlay }) => {
       {/* Drawer Header */}
       <div className={styles.drawerHeader}>
         <button 
-          className={`${styles.iconBtn} ${isOverlay ? styles.forceShow : styles.mobileOnlyBtn}`} 
+          className={`${styles.iconBtn} ${asOverlay ? styles.forceShow : styles.mobileOnlyBtn}`} 
           onClick={() => setRightPanelOpen(false)}
         >
           <X size={24} />

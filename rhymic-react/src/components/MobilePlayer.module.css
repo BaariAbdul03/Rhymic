@@ -38,7 +38,10 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px 22px 38px 22px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 22px calc(20px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Header */
@@ -46,7 +49,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 40px;
+  margin-bottom: clamp(16px, 4vh, 40px);
+  flex: 0 0 auto;
 }
 
 .iconBtn {
@@ -80,16 +84,19 @@
 
 /* Cover Art */
 .coverContainer {
-  flex: 1;
+  /* Fixed size instead of a growing flex item: on short screens a growing
+     item squeezes to zero and overlaps the controls below it. */
+  flex: 0 0 auto;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 26px;
+  margin-bottom: clamp(12px, 3vh, 26px);
   perspective: 1000px;
 }
 
 .perspectiveWrapper {
-  width: 100%;
+  width: min(78vw, 44dvh, 320px);
   max-width: 320px;
   aspect-ratio: 1/1;
   transform-style: preserve-3d;
@@ -106,7 +113,8 @@
 /* Info */
 .infoSection {
   text-align: left;
-  margin-bottom: 32px;
+  margin-bottom: clamp(14px, 3vh, 32px);
+  flex: 0 0 auto;
 }
 
 .title {
@@ -126,7 +134,8 @@
 
 /* Scrubber */
 .scrubberSection {
-  margin-bottom: 40px;
+  margin-bottom: clamp(16px, 4vh, 40px);
+  flex: 0 0 auto;
 }
 
 .sliderContainer {
@@ -232,6 +241,8 @@
   justify-content: center;
   cursor: pointer;
   transition: color 0.2s;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .transportBtn:hover {
@@ -261,7 +272,8 @@
   margin-left: 4px;
 }
 
-/* Desktop Volume SLider */
+/* Volume row — hidden on desktop widths (the bottom bar has its own slider)
+   but available in the full-screen player on phones and tablets. */
 .desktopVolume {
   display: none;
 }
@@ -310,6 +322,57 @@
   box-shadow: 0 2px 4px rgba(0,0,0,0.5);
   position: relative;
   z-index: 2;
+}
+
+@media (max-width: 1200px) {
+  .controlsWrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+  }
+
+  .desktopVolume {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (max-height: 700px) {
+  .header {
+    margin-bottom: 12px;
+  }
+
+  .perspectiveWrapper {
+    width: min(56vw, 32dvh, 220px);
+  }
+
+  .coverContainer {
+    margin-bottom: 10px;
+  }
+
+  .infoSection {
+    margin-bottom: 12px;
+  }
+
+  .title {
+    font-size: clamp(1.2rem, 5.5vw, 1.6rem);
+  }
+
+  .artist {
+    font-size: 1rem;
+  }
+
+  .scrubberSection {
+    margin-bottom: 14px;
+  }
+
+  .playBtn {
+    width: 60px;
+    height: 60px;
+  }
 }
 
 @media (min-width: 1201px) {

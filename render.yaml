@@ -17,10 +17,12 @@ services:
         value: production
 
       # ── Online Streaming Configuration ────────────────────────────────
-      # The browser plays YouTube embeds. The resolver settings below
-      # apply only to explicitly enabled legacy audio endpoints.
+      # `auto` resolves online tracks server-side and streams them through
+      # /api/stream/proxy so the browser can apply the EQ and visualizer.
+      # If resolution fails (datacenter IP block, expired URL, codec), the
+      # client automatically falls back to the YouTube embed per track.
       - key: ONLINE_STREAM_PROVIDER
-        value: embed
+        value: auto
 
       # ═════════════════════════════════════════════════════════════════╗
       # ║  LAYER 1 — Piped Instance Override                           ║

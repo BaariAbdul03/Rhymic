@@ -118,9 +118,10 @@ const ProgressBar = () => {
       <div className={styles.playerCentro}>
         <div className={styles.controls}>
           <button 
-            className={`${styles.controlBtn} ${shuffle ? styles.active : ''}`} 
+            className={`${styles.controlBtn} ${styles.mobileHidden} ${shuffle ? styles.active : ''}`} 
             onClick={toggleShuffle}
             disabled={!currentSong}
+            aria-label="Shuffle"
           >
             <Shuffle size={18} />
           </button>
@@ -161,9 +162,10 @@ const ProgressBar = () => {
             <SkipForward size={20} />
           </button>
           <button 
-            className={`${styles.iconBtn} ${styles.likeBtn}`} 
+            className={`${styles.mobileHidden} ${styles.likeBtn}`} 
             onClick={() => currentSong && toggleLike(currentSong)}
             disabled={!currentSong}
+            aria-label={isLiked ? 'Remove from favorites' : 'Add to favorites'}
           >
              <Heart size={18} fill={isLiked ? "var(--accent-primary)" : "none"} color={isLiked ? "var(--accent-primary)" : "var(--text-secondary)"} />
           </button>
